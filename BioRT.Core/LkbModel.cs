@@ -21,7 +21,37 @@ public static class LkbModel
 
         double gEud = CalculateGEUD(dvh, n);
 
-        double t = (gEud - td50) / (m * td50);
+        return CalculateNTCPFromEffectiveDose(
+            gEud,
+            td50,
+            m);
+    }
+
+    /// <summary>
+    /// Calculates LKB NTCP when the effective uniform dose has already been
+    /// derived on the dose basis required by the parameter set.
+    /// </summary>
+    public static double CalculateNTCPFromEffectiveDose(
+        double effectiveDoseGy,
+        double td50,
+        double m)
+    {
+        if (effectiveDoseGy < 0 ||
+            double.IsNaN(effectiveDoseGy) ||
+            double.IsInfinity(effectiveDoseGy))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(effectiveDoseGy),
+                "Effective dose must be finite and >= 0 Gy.");
+        }
+
+        if (td50 <= 0)
+            throw new ArgumentOutOfRangeException(nameof(td50), "TD50 must be > 0.");
+
+        if (m <= 0)
+            throw new ArgumentOutOfRangeException(nameof(m), "m must be > 0.");
+
+        double t = (effectiveDoseGy - td50) / (m * td50);
 
         return Normal.CDF(0.0, 1.0, t);
     }
