@@ -1,12 +1,13 @@
 {
   "metadata": {
-    "schema_version": "0.2.0",
-    "library_version": "2026.10-parotid-v2",
+    "schema_version": "0.3.0",
+    "library_version": "2026.10-parotid-v3",
     "status": "research_validation",
     "scope": "First provenance-aware NTCP/xerostomia library for BioRT",
     "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its endpoint, time point, structure definition, dose basis and treatment context without explicit review/recalibration.",
     "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed.",
-    "runtime_selection_note": "The implementation block is machine-readable and defines canonical structure, required input topology and runtime eligibility. Runtime eligibility does not imply clinical validation."
+    "runtime_selection_note": "The implementation block is machine-readable and defines canonical structure, required input topology and runtime eligibility. Runtime eligibility does not imply clinical validation.",
+    "fractionation_note": "Fractionation transforms are source-specific. Generic TG-166 per-bin LQED2 and source-reproduction transforms are represented separately and must not be interchanged."
   },
   "equations": {
     "lkb_probit": {
@@ -104,7 +105,9 @@
         "input_mode": "single_structure_dvh",
         "runtime_enabled": true,
         "reference_fraction_size_gy": 2,
-        "requires_eqd2_when_fraction_size_differs": true
+        "requires_eqd2_when_fraction_size_differs": true,
+        "fractionation_transform": "mean_dose_eqd2_if_prescription_fraction_differs",
+        "fractionation_note": "Reproduces the source convention: mean organ doses were converted to 2-Gy-fraction equivalent dose only for published cohorts using daily fractions other than 2 Gy. This is intentionally distinct from generic per-bin DVH LQED2 correction."
       }
     },
     {
