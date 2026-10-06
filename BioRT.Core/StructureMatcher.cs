@@ -1,111 +1,88 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace BioRT.Core.Matching;
 
-/// <summary>
-/// Maps RT structure names to canonical anatomy names using an explicit alias library.
-/// Matching is exact after normalization; substring matching is intentionally avoided.
-/// </summary>
 public sealed class StructureMatcher
 {
-    private readonly Dictionary<string, string> _aliasMap =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _aliasMap = new();
 
     public StructureMatcher(string aliasesJsonPath)
     {
-        if (string.IsNullOrWhiteSpace(aliasesJsonPath))
-            throw new ArgumentException(
-                "Alias library path must not be empty.",
-                nameof(aliasesJsonPath));
+        Console.WriteLine("[StructureMatcher] Initializing");
+        Console.WriteLine($"  Path: {Path.GetFullPath(aliasesJsonPath)}");
 
         if (!File.Exists(aliasesJsonPath))
             throw new FileNotFoundException(
-                $"Structure alias file not found: {Path.GetFullPath(aliasesJsonPath)}",
-                aliasesJsonPath);
+                $"aliases.json not found: {aliasesJsonPath}");
 
-        using var doc = JsonDocument.Parse(File.ReadAllText(aliasesJsonPath));
+        string jsonText = File.ReadAllText(aliasesJsonPath);
+        Console.WriteLine($"  File size: {jsonText.Length} chars");
 
-        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        using var doc = JsonDocument.Parse(jsonText);
+        var root = doc.RootElement;
+
+        Console.WriteLine($"  Root kind: {root.ValueKind}");
+
+        if (root.ValueKind != JsonValueKind.Object)
             throw new InvalidOperationException(
-                "aliases.json root must be a JSON object.");
+                "aliases.json root must be a JSON object");
 
-        foreach (var entry in doc.RootElement.EnumerateObject())
+        foreach (var organ in root.EnumerateObject())
         {
-            if (entry.NameEquals("metadata"))
-                continue;
+            Console.WriteLine($"  Organ key: {organ.Name}");
 
-            if (entry.Value.ValueKind != JsonValueKind.Object ||
-                !entry.Value.TryGetProperty("aliases", out var aliases) ||
-                aliases.ValueKind != JsonValueKind.Array)
+            if (!organ.Value.TryGetProperty("aliases", out var aliases))
             {
-                throw new InvalidOperationException(
-                    $"Invalid aliases.json entry for '{entry.Name}'. " +
-                    "Expected an object containing an 'aliases' string array.");
+                Console.WriteLine("    ⚠ no 'aliases' property");
+                continue;
             }
 
-            AddAlias(entry.Name, entry.Name);
+            Console.WriteLine($"    aliases kind: {aliases.ValueKind}");
 
-            foreach (var aliasElement in aliases.EnumerateArray())
+            if (aliases.ValueKind != JsonValueKind.Array)
             {
-                if (aliasElement.ValueKind != JsonValueKind.String)
-                {
-                    throw new InvalidOperationException(
-                        $"Invalid alias in '{entry.Name}'. All aliases must be strings.");
-                }
+                Console.WriteLine("    ⚠ 'aliases' is not array");
+                continue;
+            }
 
-                string? alias = aliasElement.GetString();
+            string canonical = organ.Name;
+            string canonicalNorm = Normalize(canonical);
 
-                if (string.IsNullOrWhiteSpace(alias))
+            _aliasMap[canonicalNorm] = canonical;
+            Console.WriteLine($"    + canonical: {canonicalNorm}");
+
+            foreach (var a in aliases.EnumerateArray())
+            {
+                if (a.ValueKind != JsonValueKind.String)
                     continue;
 
-                AddAlias(alias, entry.Name);
+                string alias = a.GetString()!;
+                string norm = Normalize(alias);
+
+                _aliasMap[norm] = canonical;
+                Console.WriteLine($"    + alias: {norm} -> {canonical}");
             }
         }
 
+        Console.WriteLine($"[StructureMatcher] Loaded {_aliasMap.Count} aliases");
+
         if (_aliasMap.Count == 0)
             throw new InvalidOperationException(
-                "aliases.json contains no valid alias mappings.");
+                "aliases.json contains no valid alias mappings");
     }
 
-    /// <summary>
-    /// Returns the canonical anatomy name, or null when no explicit alias matches.
-    /// </summary>
     public string? Match(string structureName)
     {
-        if (string.IsNullOrWhiteSpace(structureName))
-            return null;
-
-        string normalized = Normalize(structureName);
-
-        return _aliasMap.TryGetValue(normalized, out var canonical)
+        string key = Normalize(structureName);
+        return _aliasMap.TryGetValue(key, out var canonical)
             ? canonical
             : null;
     }
 
-    private void AddAlias(string alias, string canonical)
-    {
-        string normalized = Normalize(alias);
-
-        if (normalized.Length == 0)
-            return;
-
-        if (_aliasMap.TryGetValue(normalized, out var existingCanonical) &&
-            !existingCanonical.Equals(canonical, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Ambiguous structure alias '{alias}': " +
-                $"maps to both '{existingCanonical}' and '{canonical}'.");
-        }
-
-        _aliasMap[normalized] = canonical;
-    }
-
-    private static string Normalize(string value)
-    {
-        return string.Concat(
-            value
-                .Trim()
-                .ToLowerInvariant()
-                .Where(char.IsLetterOrDigit));
-    }
+    private static string Normalize(string s)
+        => s
+            .ToLowerInvariant()
+            .Replace("_", "")
+            .Replace("-", "")
+            .Replace(" ", "");
 }
