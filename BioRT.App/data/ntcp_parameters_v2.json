@@ -1,11 +1,12 @@
 {
   "metadata": {
-    "schema_version": "0.1.0",
-    "library_version": "2026.10-parotid-v1",
+    "schema_version": "0.2.0",
+    "library_version": "2026.10-parotid-v2",
     "status": "research_validation",
     "scope": "First provenance-aware NTCP/xerostomia library for BioRT",
     "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its endpoint, time point, structure definition, dose basis and treatment context without explicit review/recalibration.",
-    "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed."
+    "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed.",
+    "runtime_selection_note": "The implementation block is machine-readable and defines canonical structure, required input topology and runtime eligibility. Runtime eligibility does not imply clinical validation."
   },
   "equations": {
     "lkb_probit": {
@@ -34,7 +35,7 @@
       "parameters": {
         "td50_gy": 28.4,
         "m": 0.18,
-        "n": 1.0
+        "n": 1
       },
       "dose_basis": {
         "metric": "parotid dose-volume distribution",
@@ -50,7 +51,13 @@
         "doi": "10.1016/S0360-3016(99)00247-3"
       },
       "status": "legacy_reference",
-      "implementation_notes": "Useful as a historical LKB benchmark. Endpoint/time-point definition must be reviewed from full text before clinical promotion."
+      "implementation_notes": "Useful as a historical LKB benchmark. Endpoint/time-point definition must be reviewed from full text before clinical promotion.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": false,
+        "runtime_reason": "Historical benchmark only; endpoint/time-point definition is incomplete in the currently verified source extraction."
+      }
     },
     {
       "id": "semenenko_li_2008_xerostomia_lkb_6m",
@@ -65,16 +72,22 @@
       },
       "parameters": {
         "td50_gy": 31.4,
-        "td50_ci95_gy": [29.1, 34.0],
+        "td50_ci95_gy": [
+          29.1,
+          34
+        ],
         "m": 0.53,
-        "m_ci95": [0.45, 0.65],
-        "n": 1.0,
+        "m_ci95": [
+          0.45,
+          0.65
+        ],
+        "n": 1,
         "n_fitting": "fixed"
       },
       "dose_basis": {
         "metric": "mean parotid dose",
         "fractionation_correction": "For source datasets using fraction sizes other than 2 Gy, mean organ doses were converted to 2-Gy-fraction equivalent dose.",
-        "alpha_beta_gy": 3.0
+        "alpha_beta_gy": 3
       },
       "cohort": {
         "type": "combined analysis of published multi-institutional clinical datasets"
@@ -85,7 +98,14 @@
         "doi": "10.1088/0031-9155/53/3/014"
       },
       "status": "reference_candidate",
-      "implementation_notes": "Strong transparent classical reference. BioRT must apply the same fractionation convention if this parameter set is used."
+      "implementation_notes": "Strong transparent classical reference. BioRT must apply the same fractionation convention if this parameter set is used.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "requires_eqd2_when_fraction_size_differs": true
+      }
     },
     {
       "id": "dijkema_2010_parotid_flow_lkb_12m",
@@ -100,8 +120,8 @@
       },
       "parameters": {
         "td50_gy": 39.9,
-        "m": 0.40,
-        "n": 1.0,
+        "m": 0.4,
+        "n": 1,
         "n_provenance": "mean-dose LKB formulation; n=1 is the equivalent LKB volume-effect assumption"
       },
       "dose_basis": {
@@ -111,7 +131,10 @@
       "cohort": {
         "patients": 222,
         "parotid_glands": 384,
-        "centres": ["University of Michigan", "University Medical Center Utrecht"],
+        "centres": [
+          "University of Michigan",
+          "University Medical Center Utrecht"
+        ],
         "disease": "various head and neck malignancies",
         "technique": "conventional radiotherapy and IMRT"
       },
@@ -121,7 +144,14 @@
         "doi": "10.1016/j.ijrobp.2009.07.1708"
       },
       "status": "reference_candidate",
-      "implementation_notes": "Endpoint is objective gland function at 1 year, not patient-rated xerostomia."
+      "implementation_notes": "Endpoint is objective gland function at 1 year, not patient-rated xerostomia.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "fractionation_note": "Accessible abstract does not specify an explicit fractionation-normalization procedure; use outside conventional fractionation requires caution."
+      }
     },
     {
       "id": "miah_2013_parsport_parotid_lkb",
@@ -135,9 +165,12 @@
       },
       "parameters": {
         "td50_gy": 26.3,
-        "td50_ci95_gy": [24.0, 30.1],
+        "td50_ci95_gy": [
+          24,
+          30.1
+        ],
         "m": 0.25,
-        "n": 1.0
+        "n": 1
       },
       "dose_basis": {
         "metric": "parotid mean dose"
@@ -154,7 +187,14 @@
         "doi": "10.1016/j.radonc.2013.03.009"
       },
       "status": "reference_candidate",
-      "implementation_notes": "The accessible abstract has a malformed/truncated confidence interval for m; the point estimate is retained but the m confidence interval is intentionally omitted pending full-text verification."
+      "implementation_notes": "The accessible abstract has a malformed/truncated confidence interval for m; the point estimate is retained but the m confidence interval is intentionally omitted pending full-text verification.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "fractionation_note": "Conventional H&N trial context."
+      }
     },
     {
       "id": "lee_fang_2013_qol_lkb_3m",
@@ -169,10 +209,16 @@
       },
       "parameters": {
         "td50_gy": 37.8,
-        "td50_ci95_gy": [29.1, 46.9],
+        "td50_ci95_gy": [
+          29.1,
+          46.9
+        ],
         "m": 0.59,
-        "m_ci95": [0.48, 0.80],
-        "n": 1.0,
+        "m_ci95": [
+          0.48,
+          0.8
+        ],
+        "n": 1,
         "n_provenance": "mean-dose/spared-gland implementation; retain as an explicit assumption until full-text equation verification"
       },
       "cohort": {
@@ -185,7 +231,14 @@
         "doi": "10.1016/j.radonc.2012.11.013"
       },
       "status": "literature_reference_only",
-      "implementation_notes": "Do not merge with the 12-month fit. Time point is part of the model identity."
+      "implementation_notes": "Do not merge with the 12-month fit. Time point is part of the model identity.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "fractionation_note": "Time-point-specific QoL fit; not interchangeable with the 12-month fit."
+      }
     },
     {
       "id": "lee_fang_2013_qol_lkb_12m",
@@ -200,10 +253,16 @@
       },
       "parameters": {
         "td50_gy": 43.9,
-        "td50_ci95_gy": [33.2, 52.8],
+        "td50_ci95_gy": [
+          33.2,
+          52.8
+        ],
         "m": 0.48,
-        "m_ci95": [0.37, 0.76],
-        "n": 1.0,
+        "m_ci95": [
+          0.37,
+          0.76
+        ],
+        "n": 1,
         "n_provenance": "mean-dose/spared-gland implementation; retain as an explicit assumption until full-text equation verification"
       },
       "cohort": {
@@ -216,7 +275,14 @@
         "doi": "10.1016/j.radonc.2012.11.013"
       },
       "status": "literature_reference_only",
-      "implementation_notes": "Do not merge with the 3-month fit. Time point is part of the model identity."
+      "implementation_notes": "Do not merge with the 3-month fit. Time point is part of the model identity.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "fractionation_note": "Time-point-specific QoL fit; not interchangeable with the 3-month fit."
+      }
     },
     {
       "id": "mavroidis_2017_hpv_opc_lkb_12m",
@@ -232,7 +298,7 @@
       "parameters": {
         "td50_gy": 26.9,
         "m": 0.63,
-        "n": 1.0
+        "n": 1
       },
       "dose_basis": {
         "metric": "dose-volume metrics of combined contralateral salivary glands"
@@ -249,7 +315,13 @@
         "doi": "10.1016/j.radonc.2017.06.020"
       },
       "status": "context_specific_reference",
-      "implementation_notes": "Do not generalize automatically to standard-dose heterogeneous HNC populations."
+      "implementation_notes": "Do not generalize automatically to standard-dose heterogeneous HNC populations.",
+      "implementation": {
+        "canonical_structure": "salivary_glands_contralateral_combined",
+        "input_mode": "combined_structure_dvh",
+        "runtime_enabled": false,
+        "runtime_reason": "Requires a combined contralateral parotid + submandibular-gland dose representation and HPV+ de-intensified-treatment context."
+      }
     },
     {
       "id": "beetz_2012_patient_rated_xerostomia_logistic_6m",
@@ -270,7 +342,7 @@
           },
           {
             "name": "baseline_xerostomia_a_bit",
-            "coefficient": 0.720,
+            "coefficient": 0.72,
             "coding": "0 = none; 1 = a bit"
           }
         ]
@@ -280,7 +352,10 @@
         "technique": "IMRT",
         "endpoint_prevalence_percent": 51.6,
         "auc": 0.68,
-        "auc_ci95": [0.60, 0.76]
+        "auc_ci95": [
+          0.6,
+          0.76
+        ]
       },
       "source": {
         "citation": "Beetz I et al. NTCP models for patient-rated xerostomia and sticky saliva after treatment with IMRT for head and neck cancer. Radiother Oncol. 2012.",
@@ -288,7 +363,17 @@
         "doi": "10.1016/j.radonc.2012.03.004"
       },
       "status": "externally_tested_reference",
-      "implementation_notes": "Transparent logistic comparator to LKB. Baseline symptom coding is mandatory."
+      "implementation_notes": "Transparent logistic comparator to LKB. Baseline symptom coding is mandatory.",
+      "implementation": {
+        "canonical_structure": "parotid_gland",
+        "input_mode": "predictor_vector",
+        "runtime_enabled": true,
+        "required_predictors": [
+          "contralateral_parotid_mean_dose_gy",
+          "baseline_xerostomia_a_bit"
+        ],
+        "runtime_note": "Tumour laterality and baseline symptom status are required to identify the contralateral parotid and encode baseline xerostomia."
+      }
     },
     {
       "id": "lipp_v2_2_xerostomia_logistic_6m",
@@ -315,7 +400,7 @@
           {
             "name": "baseline_xerostomia",
             "coding": {
-              "none": 0.0,
+              "none": 0,
               "mild": 0.459,
               "moderate_to_severe": 1.207
             }
@@ -324,7 +409,7 @@
       },
       "cohort": {
         "development_update_patients": 1145,
-        "development_endpoint_prevalence_percent": 46.0,
+        "development_endpoint_prevalence_percent": 46,
         "external_validation_patients": 674,
         "external_validation_events": 204
       },
@@ -342,7 +427,20 @@
         "model_name": "LIPP version 2.2"
       },
       "status": "externally_validated_reference_candidate",
-      "implementation_notes": "This is a modern decision-support model, not an LKB parameter set. Local calibration must be checked before interpreting absolute risk."
+      "implementation_notes": "This is a modern decision-support model, not an LKB parameter set. Local calibration must be checked before interpreting absolute risk.",
+      "implementation": {
+        "canonical_structure": "salivary_glands_bilateral",
+        "input_mode": "predictor_vector",
+        "runtime_enabled": true,
+        "required_predictors": [
+          "sqrt_left_parotid_mean_dose_plus_sqrt_right_parotid_mean_dose",
+          "combined_submandibular_mean_dose_gy"
+        ],
+        "required_categorical_predictors": [
+          "baseline_xerostomia"
+        ],
+        "runtime_note": "Requires both parotids, combined submandibular dose, and baseline xerostomia category. Absolute-risk use also requires calibration review."
+      }
     }
   ],
   "evidence_only": [
