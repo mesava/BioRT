@@ -70,19 +70,32 @@ public sealed class NtcpModelEngine
         }
 
         if (model.Implementation?.RequiresEqd2WhenFractionSizeDiffers == true &&
-            model.Implementation.ReferenceFractionSizeGy is double referenceFraction &&
-            context.DosePerFractionGy is double actualFraction &&
-            Math.Abs(actualFraction - referenceFraction) > FractionSizeToleranceGy)
+            model.Implementation.ReferenceFractionSizeGy is double referenceFraction)
         {
-            warnings.Add(
-                $"Model was normalized to {referenceFraction:F2} Gy/fraction, " +
-                $"but the current plan is {actualFraction:F2} Gy/fraction. " +
-                "Model-specific EQD2 conversion is required and is not yet applied by the NTCP engine.");
+            if (context.DosePerFractionGy is not double actualFraction)
+            {
+                warnings.Add(
+                    "Dose per fraction is required to verify compatibility with this parameter set.");
 
-            return Build(
-                model,
-                NtcpEvaluationStatus.NotApplicable,
-                warnings: warnings);
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.MissingInputs,
+                    warnings: warnings,
+                    missingInputs: new[] { "dose_per_fraction_gy" });
+            }
+
+            if (Math.Abs(actualFraction - referenceFraction) > FractionSizeToleranceGy)
+            {
+                warnings.Add(
+                    $"Model was normalized to {referenceFraction:F2} Gy/fraction, " +
+                    $"but the current plan is {actualFraction:F2} Gy/fraction. " +
+                    "Model-specific EQD2 conversion is required and is not yet applied by the NTCP engine.");
+
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.NotApplicable,
+                    warnings: warnings);
+            }
         }
 
         if (model.Implementation?.ReferenceFractionSizeGy is double refFx &&
