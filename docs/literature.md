@@ -169,3 +169,89 @@ For every model parameter set entered into BioRT, record:
 - Using Emami/Burman parameter fits as a modern default without labeling them as legacy.
 - Applying conventional-fractionation parameters automatically to SRS/SBRT.
 - Computing TCP from an arbitrary PTV name without diagnosis/histology/target-context metadata.
+
+
+## P0/P1 — modern literature update, 2016–2026
+
+The classical LKB/EUD/TCP papers remain the mathematical foundation, but BioRT must not stop at them. Modern literature mainly changes **how parameter sets are selected, validated, recalibrated and transferred between cohorts/techniques**, rather than replacing the core equations with one universally superior model.
+
+### Modern NTCP methodology, validation and transferability
+
+- [ ] Cella L, et al. *Normal tissue complication probability (NTCP) models for modern radiation therapy*. 2019. PMID 31506196.
+  - Review of NTCP in the setting of modern RT, including hypofractionation, ions, reirradiation and voxel/image-based approaches.
+- [ ] Van den Bosch L, et al. *Key challenges in normal tissue complication probability model development and validation: towards a comprehensive strategy*. Radiother Oncol. 2020;148:151-156. PMID 32388149.
+  - **P0 for BioRT model governance.** Covers overfitting, missing data, multicollinearity, generalisability, multiple toxicity grades/time points and validation strategy.
+- [ ] *Generalizability assessment of head and neck cancer NTCP models based on the TRIPOD criteria*. 2020. PMID 32155505.
+  - Shows that independent external validation of H&N NTCP models is uncommon; useful for deciding which published models are mature enough for a reference library.
+- [ ] Wolff RF, et al. *PROBAST: A Tool to Assess the Risk of Bias and Applicability of Prediction Model Studies*. Ann Intern Med. 2019;170:51-58. PMID 30596875.
+  - Methodological quality/risk-of-bias tool for prediction-model literature. BioRT literature extraction should record PROBAST-relevant issues for multivariable models.
+- [ ] Tajiki S, et al. *A systematic review of the normal tissue complication probability models and parameters: Head and neck cancers treated with conformal radiotherapy*. Head Neck. 2023;45:3146-3156. PMID 37767820.
+  - Important modern catalogue of H&N NTCP models/parameters and endpoints.
+- [ ] Lee TF, et al. *Using meta-analysis and CNN-NLP to review and classify the medical literature for normal tissue complication probability in head and neck cancer*. Radiat Oncol. 2024;19:5. PMID 38195582.
+  - Modern evidence-mapping/meta-analysis layer; useful for literature completeness, not a direct source of a single clinical coefficient set.
+- [ ] *Tackling external validation challenges: experience with normal tissue complication probability (NTCP) models for head and neck cancer radiotherapy toxicities*. 2026. PMID 41874942.
+  - Contemporary external-validation evidence; reinforces the need to compare training and validation cohorts and endpoint definitions.
+- [ ] *External validation and updating of NTCP models for radiation pneumonitis: QUANTEC, Appelt, and a local simplified model*. 2026. PMID 42130623.
+  - Important example of evaluating and recalibrating older/QUANTEC-era models in contemporary IMRT cohorts.
+- [ ] *Multicenter External Validation of Normal Tissue Complication Probability Models for Radiation-Induced Primary Hypothyroidism in Head and Neck Cancer Survivors With Long-Term Endocrine Outcomes*. 2026. PMID 42409271.
+  - Large multicentre example of discrimination, calibration, Brier score and clinical-utility assessment.
+
+### Modern xerostomia / salivary-gland literature
+
+These papers are especially relevant to the first BioRT endpoint. They should be reviewed **in addition to**, not instead of, the older LKB/parotid papers.
+
+- [ ] Onjukka E, et al. *Modeling of Xerostomia After Radiotherapy for Head and Neck Cancer: A Registry Study*. Front Oncol. 2020;10:1647. PMID 32923404.
+  - 753-patient real-world registry; late xerostomia at multiple time points; Cox-based models using total/contralateral parotid mean dose plus clinical factors.
+- [ ] Tambas M, et al. *First experience with model-based selection of head and neck cancer patients for proton therapy*. Radiother Oncol. 2020;151:206-213. PMID 32768508.
+  - Demonstrates real clinical use of NTCP differences for treatment-technique selection.
+- [ ] *National Protocol for Model-Based Selection for Proton Therapy in Head and Neck Cancer*. 2021. PMID 34285961.
+  - **High priority for BioRT decision-support design.** Shows how NTCP models can be embedded in a governed clinical selection protocol rather than used as free-standing percentages.
+- [ ] Chao M, et al. *Cluster model incorporating heterogeneous dose distribution of partial parotid irradiation for radiotherapy induced xerostomia prediction with machine learning methods*. Acta Oncol. 2022;61:842-848. PMID 35527717.
+  - Research direction showing potential information beyond simple mean dose; not a replacement for the validated classical branch.
+- [ ] *Dose response modelling of secretory cell loss in salivary glands using PSMA PET*. Radiother Oncol. 2022. PMID 36368471.
+  - Objective voxel-level functional imaging evidence for salivary-gland dose response; useful for future spatial/functional extensions.
+- [ ] Mavroidis P, et al. *NTCP modelling of xerostomia after radiotherapy for oropharyngeal cancer using the PRO-CTCAE and CTCAE scoring systems at different time-points post-RT*. Phys Med. 2023;116:103169. PMID 37989042.
+  - **High priority.** Fits LKB and other NTCP models at 6–24 months and explicitly demonstrates dependence on scoring system, structure grouping and follow-up time.
+- [ ] Chu H, et al. *Three-Dimensional Deep Learning Normal Tissue Complication Probability Model to Predict Late Xerostomia in Patients With Head and Neck Cancer*. IJROBP. 2025;121:269-280. PMID 39147208.
+  - International two-institution cohort; compares 3D multimodal DL against a conventional xerostomia NTCP model. Keep as an exploratory/advanced branch, not the initial reference implementation.
+- [ ] Dalqvist E, et al. *Validated prediction of xerostomia in a real-world population: a step toward model-guided radiotherapy*. 2025. PMID 40823804.
+  - **High priority external validation.** Shows the importance of recalibration and reports limited discrimination despite good recalibrated calibration; directly relevant to how BioRT should label model confidence.
+- [ ] *Benchmarking of radiobiological NTCP models in head and neck radiotherapy using independent computational pipelines: an institutional validation study with machine learning augmentation*. 2026. PMID 42453164.
+  - Useful primarily as an implementation/independent-pipeline validation example; small event numbers mean it should not be treated as a definitive parameter source.
+
+### Modern TCP / radiobiology literature
+
+- [ ] van Leeuwen CM, et al. *The alfa and beta of tumours: a review of parameters of the linear-quadratic model, derived from clinical radiotherapy studies*. Radiat Oncol. 2018;13:96. PMID 29769103.
+  - Already in the TCP foundation section; retained here because it is a core modern review. It reports strong heterogeneity and supports selecting LQ parameters by tumour site, histology, model and endpoint rather than using one generic alpha/beta.
+- [ ] McMahon SJ. *The linear quadratic model: usage, interpretation and challenges*. Phys Med Biol. 2019;64:01TR01. PMID 30523903.
+  - **P0 modern radiobiology reference.** Required before extending LQ/EQD2 to high-dose-per-fraction TCP/NTCP use.
+- [ ] Chaikh A, et al. *Construction of radiobiological models as TCP and NTCP: from dose to clinical effects prediction*. Cancer Radiother. 2020;24:247-257. PMID 32220563.
+  - Modern overview linking fractionation correction, gEUD and probability models; useful for architecture cross-checking.
+- [ ] Royce TJ, et al. *Tumor Control Probability Modeling and Systematic Review of the Literature of Stereotactic Body Radiation Therapy for Prostate Cancer*. IJROBP. 2021;110:227-236. PMID 32900561.
+  - Disease-specific modern TCP example with pooled clinical data and risk-stratified biochemical-control endpoint.
+- [ ] Klement RJ, et al. *Estimation of the alpha/beta ratio of non-small cell lung cancer treated with stereotactic body radiotherapy*. Radiother Oncol. 2019. PMID 31431371.
+  - Important for SBRT TCP/fractionation sensitivity and uncertainty of alpha/beta.
+- [ ] *Tumor control probability modeling for stereotactic body radiation therapy of early-stage lung cancer using multiple bio-physical models*. 2017. PMID 27871671.
+  - Useful model-comparison dataset; demonstrates model dependence and stage dependence in lung SBRT.
+- [ ] Kutuva AR, et al. *Mathematical modeling of radiotherapy: impact of model selection on estimating minimum radiation dose for tumor control*. Front Oncol. 2023;13:1130966. PMID 37901317.
+  - **High priority methodological paper:** explicitly demonstrates that estimated control dose depends on chosen mathematical model.
+- [ ] *Re-evaluating the alpha/beta ratio in 2026: A systematic review and quantitative reappraisal in the era of molecular radiobiology*. 2026. PMID 42731947.
+  - Current systematic update. Useful for uncertainty ranges and identifying where classical static alpha/beta assumptions remain defensible versus where they are unstable.
+
+### Modern prediction-model governance for BioRT
+
+For multivariable NTCP/TCP models (logistic, Cox, machine-learning, radiomics), BioRT should record not only the formula and coefficients but also:
+
+- development vs internal validation vs independent external validation;
+- calibration intercept/slope and calibration plot results;
+- discrimination (AUC/C-index) where applicable;
+- Brier score or other overall-performance measure;
+- need for local recalibration;
+- event count and effective sample size;
+- missing-data handling;
+- predictor definition and preprocessing;
+- endpoint definition, grade and time horizon;
+- treatment technique and era;
+- model-update version.
+
+**Rule:** a recent paper is not automatically a better source. A 2025–2026 model with poor external validity or weak calibration remains experimental; a well-defined older LKB fit may remain a better transparent benchmark for the classical branch.
