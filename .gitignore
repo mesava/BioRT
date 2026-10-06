@@ -1,0 +1,24 @@
+# Visual Studio / .NET
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Build / IDE caches
+*.cache
+*.pdb
+
+# Runtime logs
+BioRT_Log_*.txt
+*.log
+
+# Clinical / patient DICOM data
+*.dcm
+*.dicom
+*.DCM
+
+# Private local test data
+patients/
+patient-data/
+test-data-private/
