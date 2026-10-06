@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "schema_version": "0.3.0",
-    "library_version": "2026.10-parotid-v3",
+    "schema_version": "0.4.0",
+    "library_version": "2026.10-multi-organ-v1",
     "status": "research_validation",
-    "scope": "First provenance-aware NTCP/xerostomia library for BioRT",
+    "scope": "Provenance-aware NTCP library for BioRT; currently xerostomia and spinal-cord myelopathy evidence/model records.",
     "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its endpoint, time point, structure definition, dose basis and treatment context without explicit review/recalibration.",
     "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed.",
     "runtime_selection_note": "The implementation block is machine-readable and defines canonical structure, required input topology and runtime eligibility. Runtime eligibility does not imply clinical validation.",
@@ -507,6 +507,251 @@
       },
       "reason": "Not traceable as a published indivisible parameter set. Numerically it matches approximately the arithmetic means of the separate 3-month and 12-month Lee/Fang 2013 fits (37.8/43.9 Gy and 0.59/0.48). Time-point-specific model parameters must not be averaged.",
       "replacement": "Select an explicit endpoint/time-point/model record from xerostomia_models."
+    }
+  ],
+  "spinal_cord_models": [
+    {
+      "id": "burman_1991_spinal_cord_lkb_myelopathy",
+      "model_family": "LKB",
+      "equation_id": "lkb_probit",
+      "structure_definition": "spinal cord; legacy Emami/Burman tolerance framework",
+      "endpoint": {
+        "name": "radiation myelopathy / myelitis-necrosis",
+        "measurement": "clinical neurologic complication",
+        "definition": "legacy myelitis/necrosis endpoint from Emami tolerance compilation fitted by Burman et al.",
+        "time_point": "legacy 5-year tolerance framework"
+      },
+      "parameters": {
+        "td50_gy": 66.5,
+        "m": 0.175,
+        "n": 0.05
+      },
+      "dose_basis": {
+        "metric": "spinal-cord dose-volume distribution",
+        "fractionation_correction": "No modern source-specific correction is encoded for this legacy fit."
+      },
+      "cohort": {
+        "type": "legacy fitted tolerance compilation",
+        "provenance": "Burman et al. fit the Lyman model to the Emami et al. normal-tissue tolerance compilation."
+      },
+      "source": {
+        "citation": "Burman C, Kutcher GJ, Emami B, Goitein M. Fitting of normal tissue tolerance data to an analytic function. IJROBP. 1991.",
+        "pmid": "2032883",
+        "doi": "10.1016/0360-3016(91)90172-Z"
+      },
+      "status": "legacy_reference",
+      "implementation_notes": "Historical LKB benchmark only. It must not be treated as a modern absolute-risk truth, and it must not be extrapolated to SRS/SBRT.",
+      "implementation": {
+        "canonical_structure": "spinal_cord",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "minimum_prescription_fraction_size_gy": 1.8,
+        "maximum_prescription_fraction_size_gy": 2,
+        "fractionation_note": "Runtime is deliberately limited to approximately conventional 1.8-2.0 Gy/fraction. QUANTEC/HyTEC evidence should be shown alongside this legacy LKB estimate."
+      }
+    },
+    {
+      "id": "quantec_2010_spinal_cord_conventional_reference",
+      "model_family": "dose_risk_reference",
+      "equation_id": "reference_risk_table",
+      "structure_definition": "full-thickness spinal cord cross-section; conventional fractionation",
+      "endpoint": {
+        "name": "radiation myelopathy",
+        "measurement": "clinical myelopathy",
+        "definition": "conventional fractionation risk estimates from the QUANTEC spinal-cord review",
+        "time_point": "late toxicity"
+      },
+      "parameters": {
+        "prescription_fraction_size_range_gy": [
+          1.8,
+          2
+        ],
+        "risk_points": [
+          {
+            "dose_gy": 50,
+            "risk_percent": 0.2
+          },
+          {
+            "dose_gy": 60,
+            "risk_percent": 6
+          },
+          {
+            "dose_gy": 69,
+            "risk_percent": 50
+          }
+        ],
+        "cervical_cord_model_d50_gy": 69.4,
+        "cervical_cord_model_d50_ci95_gy": [
+          66.4,
+          72.6
+        ],
+        "cervical_cord_alpha_beta_gy": 0.87,
+        "cervical_cord_alpha_beta_ci95_gy": [
+          0.54,
+          1.19
+        ]
+      },
+      "dose_basis": {
+        "metric": "maximum/whole-cord dose for conventional fractionation",
+        "fractionation_correction": "QUANTEC reports EQD2 analyses for historical datasets; recommended conventional risk points are reported for 2 Gy/day."
+      },
+      "cohort": {
+        "type": "QUANTEC synthesis of published human spinal-cord myelopathy data"
+      },
+      "source": {
+        "citation": "Kirkpatrick JP, van der Kogel AJ, Schultheiss TE. Radiation dose-volume effects in the spinal cord. IJROBP. 2010.",
+        "pmid": "20171517",
+        "doi": "10.1016/j.ijrobp.2009.04.095"
+      },
+      "status": "reference_evidence",
+      "implementation_notes": "Use as conventional-fractionation risk evidence, not as an interpolated continuous probability model unless the original probability-distribution model is implemented and validated.",
+      "implementation": {
+        "canonical_structure": "spinal_cord",
+        "input_mode": "reference_table",
+        "runtime_enabled": false,
+        "runtime_reason": "Reference risk table only; BioRT does not interpolate it into an absolute continuous NTCP curve."
+      }
+    },
+    {
+      "id": "hytec_2021_spinal_cord_denovo_sbrt_reference",
+      "model_family": "dose_constraint_reference",
+      "equation_id": "reference_constraint_table",
+      "structure_definition": "spinal cord point maximum dose in de novo spine SBRT",
+      "endpoint": {
+        "name": "radiation myelopathy",
+        "measurement": "clinical radiation myelopathy",
+        "definition": "estimated 1-5% risk range after de novo spine SBRT",
+        "time_point": "late toxicity"
+      },
+      "parameters": {
+        "risk_range_percent": [
+          1,
+          5
+        ],
+        "point_maximum_dose_gy_by_fractions": {
+          "1": [
+            12.4,
+            14
+          ],
+          "2": [
+            17,
+            17
+          ],
+          "3": [
+            20.3,
+            20.3
+          ],
+          "4": [
+            23,
+            23
+          ],
+          "5": [
+            25.3,
+            25.3
+          ]
+        }
+      },
+      "dose_basis": {
+        "metric": "spinal cord point Dmax",
+        "fractionation_correction": "Use the published fraction-specific limits directly; do not derive them by extrapolating the conventional LKB model."
+      },
+      "cohort": {
+        "type": "HyTEC synthesis of published spine SBRT tolerance data"
+      },
+      "source": {
+        "citation": "Sahgal A et al. Spinal Cord Dose Tolerance to Stereotactic Body Radiation Therapy. IJROBP. 2021.",
+        "pmid": "31606528",
+        "doi": "10.1016/j.ijrobp.2019.09.038"
+      },
+      "status": "reference_evidence",
+      "implementation_notes": "HyTEC SBRT evidence is intentionally separate from conventional-fractionation LKB models.",
+      "implementation": {
+        "canonical_structure": "spinal_cord",
+        "input_mode": "fraction_specific_dmax_reference",
+        "runtime_enabled": false,
+        "runtime_reason": "Reference constraints are stored, but a dedicated fraction-specific risk/constraint evaluator has not yet been implemented."
+      }
+    },
+    {
+      "id": "hytec_2021_spinal_cord_reirradiation_reference",
+      "model_family": "reirradiation_reference",
+      "equation_id": "reference_multicourse_constraints",
+      "structure_definition": "thecal sac/spinal cord Dmax for spine SBRT reirradiation",
+      "endpoint": {
+        "name": "radiation myelopathy",
+        "measurement": "clinical radiation myelopathy",
+        "definition": "lower-risk factors reported for spine SBRT reirradiation",
+        "time_point": "late toxicity"
+      },
+      "parameters": {
+        "alpha_beta_gy": 2,
+        "cumulative_eqd2_dmax_upper_gy": 70,
+        "sbrt_component_eqd2_dmax_upper_gy": 25,
+        "sbrt_to_cumulative_eqd2_ratio_upper": 0.5,
+        "minimum_interval_months": 5
+      },
+      "dose_basis": {
+        "metric": "thecal-sac/spinal-cord Dmax, course-specific and cumulative EQD2",
+        "fractionation_correction": "EQD2 with alpha/beta=2 Gy"
+      },
+      "cohort": {
+        "type": "HyTEC synthesis of reirradiation spine SBRT reports"
+      },
+      "source": {
+        "citation": "Sahgal A et al. Spinal Cord Dose Tolerance to Stereotactic Body Radiation Therapy. IJROBP. 2021.",
+        "pmid": "31606528",
+        "doi": "10.1016/j.ijrobp.2019.09.038"
+      },
+      "status": "reference_evidence",
+      "implementation_notes": "Requires prior-course dose, current-course dose, interval and spatially corresponding Dmax information. It cannot be evaluated from a single-course RTDOSE alone.",
+      "implementation": {
+        "canonical_structure": "spinal_cord",
+        "input_mode": "multicourse_reirradiation",
+        "runtime_enabled": false,
+        "runtime_reason": "Requires multi-course dose history and interval metadata not present in the current patient input model."
+      }
+    },
+    {
+      "id": "retec_2026_spinal_cord_reirradiation_experimental",
+      "model_family": "reirradiation_ntcp_experimental",
+      "equation_id": "retec_recovery_logistic",
+      "structure_definition": "spinal cord reirradiation Dmax with time-dependent recovery",
+      "endpoint": {
+        "name": "radiation myelopathy",
+        "measurement": "clinical radiation myelopathy",
+        "definition": "proof-of-concept time-recovery NTCP modeling for spinal cord reirradiation",
+        "time_point": "late toxicity"
+      },
+      "parameters": {
+        "published_lesions": 282,
+        "myelopathy_events": 6,
+        "one_year_recovery_estimate_percent_gt": 50,
+        "one_year_recovery_bootstrap_ci95_percent": [
+          31,
+          95
+        ]
+      },
+      "dose_basis": {
+        "metric": "course-specific and cumulative spinal-cord Dmax with recovery factor",
+        "fractionation_correction": "model-specific reirradiation workflow; exact coefficient implementation requires the full model sequence"
+      },
+      "cohort": {
+        "type": "compiled published reirradiation literature"
+      },
+      "source": {
+        "citation": "Grimm J et al. Reirradiation treatment effects in the clinic (ReTEC) proposal - proof of concept based on spinal cord dose tolerance for reirradiation with stereotactic body radiotherapy. JACMP. 2026.",
+        "pmid": "41954028",
+        "doi": "10.1002/acm2.70557"
+      },
+      "status": "experimental",
+      "implementation_notes": "Very limited event count and wide uncertainty. The authors recommend remaining within current standard guidelines until stronger data are available.",
+      "implementation": {
+        "canonical_structure": "spinal_cord",
+        "input_mode": "multicourse_reirradiation",
+        "runtime_enabled": false,
+        "runtime_reason": "Experimental proof-of-concept model; exact coefficient sequence and multi-course inputs are not implemented."
+      }
     }
   ]
 }

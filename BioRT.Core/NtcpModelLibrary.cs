@@ -24,22 +24,36 @@ public sealed class NtcpModelLibrary
         using var doc = JsonDocument.Parse(File.ReadAllText(jsonPath));
         var root = doc.RootElement;
 
-        if (!root.TryGetProperty("xerostomia_models", out var modelsNode) ||
-            modelsNode.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException(
-                "NTCP library must contain a 'xerostomia_models' array.");
-        }
-
         var models = new List<NtcpModelDefinition>();
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var node in modelsNode.EnumerateArray())
+        foreach (var property in root.EnumerateObject())
         {
-            models.Add(ParseModel(node));
+            bool isModelArray =
+                property.Value.ValueKind == JsonValueKind.Array &&
+                (property.Name.Equals("models", StringComparison.OrdinalIgnoreCase) ||
+                 property.Name.EndsWith("_models", StringComparison.OrdinalIgnoreCase));
+
+            if (!isModelArray)
+                continue;
+
+            foreach (var node in property.Value.EnumerateArray())
+            {
+                NtcpModelDefinition model = ParseModel(node);
+
+                if (!ids.Add(model.Id))
+                {
+                    throw new InvalidOperationException(
+                        $"Duplicate NTCP model id '{model.Id}' across model collections.");
+                }
+
+                models.Add(model);
+            }
         }
 
         if (models.Count == 0)
-            throw new InvalidOperationException("NTCP library contains no computable model definitions.");
+            throw new InvalidOperationException(
+                "NTCP library contains no model arrays ('models' or '*_models').");
 
         return new NtcpModelLibrary(models);
     }
@@ -67,6 +81,10 @@ public sealed class NtcpModelLibrary
                 FractionationTransform =
                     GetOptionalString(implNode, "fractionation_transform"),
                 FractionationNote = GetOptionalString(implNode, "fractionation_note"),
+                MinimumPrescriptionFractionSizeGy =
+                    GetOptionalDouble(implNode, "minimum_prescription_fraction_size_gy"),
+                MaximumPrescriptionFractionSizeGy =
+                    GetOptionalDouble(implNode, "maximum_prescription_fraction_size_gy"),
                 RequiredPredictors = GetStringArray(implNode, "required_predictors"),
                 RequiredCategoricalPredictors =
                     GetStringArray(implNode, "required_categorical_predictors")

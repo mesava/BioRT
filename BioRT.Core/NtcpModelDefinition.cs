@@ -45,6 +45,8 @@ public sealed class NtcpImplementationDefinition
     public bool RequiresEqd2WhenFractionSizeDiffers { get; init; }
     public string? FractionationTransform { get; init; }
     public string? FractionationNote { get; init; }
+    public double? MinimumPrescriptionFractionSizeGy { get; init; }
+    public double? MaximumPrescriptionFractionSizeGy { get; init; }
 
     public IReadOnlyList<string> RequiredPredictors { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> RequiredCategoricalPredictors { get; init; } = Array.Empty<string>();
