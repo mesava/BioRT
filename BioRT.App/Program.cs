@@ -139,6 +139,7 @@ internal class Program
 
         plan.DVHs.Clear();
         var structureVolumesCc = new Dictionary<string, double>();
+        var structureMasks = new Dictionary<string, StructureMask>();
 
         double voxelVolumeCc =
             plan.Dose.SpacingX *
@@ -166,6 +167,8 @@ internal class Program
 
             structureVolumesCc[match.Value] =
                 mask.Mask.Cast<bool>().Count(v => v) * voxelVolumeCc;
+
+            structureMasks[match.Value] = mask;
 
             var dvh = DVHCalculator.Calculate(mask, plan.Dose);
             if (dvh == null)
@@ -204,6 +207,15 @@ internal class Program
             Console.WriteLine($"  HI   : {PtvMetricCalculator.HI(
                 PtvMetricCalculator.D2(dvh),
                 PtvMetricCalculator.D98(dvh)):F3}");
+
+            if (structureMasks.TryGetValue(dvh.Name, out var ptvMask))
+            {
+                Console.WriteLine(
+                    $"  CI   : {PtvSpatialMetrics.ComputeCI(ptvMask, plan.Dose, rx):F3}");
+                Console.WriteLine(
+                    $"  GI   : {PtvSpatialMetrics.ComputeGI(plan.Dose, rx):F3}");
+            }
+
             Console.WriteLine();
         }
 
@@ -225,6 +237,12 @@ internal class Program
                 CriterionType.Dmax => DoseMetricCalculator.Dmax(dvh),
                 CriterionType.DxxPercent =>
                     DoseMetricCalculator.DxPercent(dvh, c.DxPercent!.Value),
+                CriterionType.VxxGyPercent =>
+                    DoseMetricCalculator.VxxGyPercent(
+                        dvh, c.DoseGy!.Value),
+                CriterionType.VxxGyCc =>
+                    DoseMetricCalculator.VxxGyCc(
+                        dvh, c.DoseGy!.Value, structureVolumesCc[dvh.Name]),
                 CriterionType.Dcc =>
                     DoseMetricCalculator.Dcc(
                         dvh, c.VolumeCc!.Value, structureVolumesCc[dvh.Name]),
