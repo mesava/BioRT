@@ -24,6 +24,9 @@
     <Content Include="..\BioRT.App\data\ntcp_parameters_v2.json" Link="data\ntcp_parameters_v2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\validation\tg166_reference_values.json" Link="data\tg166_reference_values.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
