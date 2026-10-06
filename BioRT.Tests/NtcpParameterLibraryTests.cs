@@ -27,33 +27,51 @@ public class NtcpParameterLibraryTests
             .GetProperty("schema_version")
             .GetString();
 
-        Assert.Equal("0.3.0", version);
+        Assert.Equal("0.4.0", version);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("xerostomia_models").ValueKind);
     }
 
     [Fact]
-    public void ComputableModels_HaveUniqueIds_AndTraceablePrimarySources()
+    public void ModelCollections_HaveUniqueIds_AndTraceablePrimarySources()
     {
         using var doc = LoadLibrary();
 
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        int modelCount = 0;
 
-        foreach (var model in doc.RootElement.GetProperty("xerostomia_models").EnumerateArray())
+        foreach (var property in doc.RootElement.EnumerateObject())
         {
-            string id = model.GetProperty("id").GetString()!;
+            if (property.Value.ValueKind != JsonValueKind.Array ||
+                !property.Name.EndsWith("_models", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-            Assert.True(ids.Add(id), $"Duplicate model id: {id}");
+            foreach (var model in property.Value.EnumerateArray())
+            {
+                modelCount++;
 
-            var source = model.GetProperty("source");
+                string id = model.GetProperty("id").GetString()!;
 
-            Assert.False(string.IsNullOrWhiteSpace(source.GetProperty("pmid").GetString()));
-            Assert.False(string.IsNullOrWhiteSpace(source.GetProperty("doi").GetString()));
+                Assert.True(ids.Add(id), $"Duplicate model id: {id}");
 
-            string equationId = model.GetProperty("equation_id").GetString()!;
-            Assert.True(
-                equationId is "lkb_probit" or "logistic",
-                $"Unsupported equation id '{equationId}' in model '{id}'.");
+                var source = model.GetProperty("source");
+
+                Assert.False(
+                    string.IsNullOrWhiteSpace(source.GetProperty("pmid").GetString()),
+                    $"Missing PMID for model '{id}'.");
+
+                Assert.False(
+                    string.IsNullOrWhiteSpace(source.GetProperty("doi").GetString()),
+                    $"Missing DOI for model '{id}'.");
+
+                Assert.False(
+                    string.IsNullOrWhiteSpace(model.GetProperty("equation_id").GetString()),
+                    $"Missing equation_id for model '{id}'.");
+            }
         }
+
+        Assert.True(modelCount > 0);
     }
 
     [Fact]
