@@ -73,6 +73,41 @@ public sealed class NtcpModelEngine
                 missingInputs: new[] { "structure_dvh" });
         }
 
+        if (model.Implementation?.MinimumPrescriptionFractionSizeGy is double minFx ||
+            model.Implementation?.MaximumPrescriptionFractionSizeGy is double maxFx)
+        {
+            if (context.DosePerFractionGy is not double actualFx)
+            {
+                warnings.Add(
+                    "Prescription dose per fraction is required to verify this model's applicability domain.");
+
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.MissingInputs,
+                    warnings: warnings,
+                    missingInputs: new[] { "dose_per_fraction_gy" });
+            }
+
+            if ((model.Implementation.MinimumPrescriptionFractionSizeGy is double minimum &&
+                 actualFx < minimum - FractionSizeToleranceGy) ||
+                (model.Implementation.MaximumPrescriptionFractionSizeGy is double maximum &&
+                 actualFx > maximum + FractionSizeToleranceGy))
+            {
+                string range =
+                    $"{model.Implementation.MinimumPrescriptionFractionSizeGy?.ToString("F2") ?? "-inf"}" +
+                    " to " +
+                    $"{model.Implementation.MaximumPrescriptionFractionSizeGy?.ToString("F2") ?? "+inf"} Gy/fx";
+
+                warnings.Add(
+                    $"Prescription fraction size {actualFx:F2} Gy/fx is outside the validated/configured model range ({range}).");
+
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.NotApplicable,
+                    warnings: warnings);
+            }
+        }
+
         var p = model.Parameters;
 
         if (!TryGetDouble(p, "td50_gy", out double td50) ||
