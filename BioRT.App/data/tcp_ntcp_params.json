@@ -1,0 +1,680 @@
+{
+  "metadata": {
+    "version": "2.0",
+    "date": "2026-01-27",
+    "language": "ru",
+    "description": "Comprehensive database of TCP/NTCP radiobiological parameters for treatment planning",
+    "sources": ["QUANTEC 2010", "Emami/Burman 1991", "Clinical studies 2018-2026"]
+  },
+  "tcp_parameters": {
+    "lung_nsclc": {
+      "alpha_beta_gy": 10,
+      "alpha_beta_range": "10-20",
+      "alpha_gy_inv": 0.30,
+      "alpha_range": "0.28-0.35",
+      "sf2": 0.55,
+      "sf2_range": "0.4-0.7",
+      "n0_cells": 1e7,
+      "tpot_days": 4.5,
+      "tpot_range": "4-5",
+      "tk_days": 24,
+      "tk_range": "21-28",
+      "tcd50_gy": 51.24,
+      "gamma50": 0.83,
+      "notes": "Быстропролиферирующая опухоль, α/β может быть выше для SBRT (20 Gy)"
+    },
+    "head_neck_carcinoma": {
+      "alpha_beta_gy": 10,
+      "alpha_beta_range": "8.1-10",
+      "alpha_gy_inv": 0.28,
+      "alpha_range": "0.22-0.35",
+      "sf2": 0.40,
+      "sf2_range": "0.3-0.8",
+      "sf2_note": "Высокая гетерогенность, медиана 0.40-0.61",
+      "n0_cells": 5e6,
+      "tpot_days": 4.0,
+      "tpot_range": "3-5",
+      "td_days": 4.0,
+      "td_variance": 1.8,
+      "tk_days": 24,
+      "tk_range": "21-28",
+      "repop_loss_gy_per_day": 0.6,
+      "repop_loss_range": "0.6-0.8",
+      "notes": "Критична репопуляция, требует завершения в Tk дней"
+    },
+    "prostate_cancer": {
+      "alpha_beta_gy": 1.6,
+      "alpha_beta_range": "1.3-2.9",
+      "alpha_gy_inv": 0.4,
+      "sf2": 0.45,
+      "sf2_range": "0.4-0.5",
+      "n0_cells": 5e6,
+      "tpot_days": 30,
+      "tpot_range": "19-42",
+      "tcd50_gland_gy": 70.6,
+      "tcd50_gtv_gy": 72.9,
+      "notes": "Низкий α/β - выгода от гипофракционирования, медленная пролиферация"
+    },
+    "breast_cancer": {
+      "alpha_beta_gy": 3.5,
+      "alpha_beta_range": "2-4.5",
+      "alpha_gy_inv": 0.35,
+      "sf2": 0.30,
+      "n0_cells": 1e7,
+      "notes": "Преимущество гипофракционирования"
+    },
+    "melanoma_brain_metastases": {
+      "alpha_beta_gy": 12.5,
+      "alpha_beta_range": "10-15",
+      "sf2": 0.38,
+      "sf2_range": "0.22-0.54",
+      "sf2_note": "Радиорезистентная опухоль",
+      "bed_gy10_min": 63,
+      "bed_gy15_min": 49,
+      "notes": "BED с α/β=15 лучше коррелирует с локальным контролем, чем физическая доза"
+    },
+    "cervix_cancer": {
+      "alpha_beta_gy": 10,
+      "alpha_gy_inv": 0.30,
+      "alpha_range": "0.2-0.4",
+      "sf2": 0.55,
+      "sf2_range": "0.3-0.8",
+      "tpot_days": 4.5,
+      "tpot_range": "4-5",
+      "tk_days": 19,
+      "tk_note": "Раньше чем H&N!",
+      "repop_loss_gy_per_day": 0.6,
+      "notes": "Короткий Tk требует OTT <56-64 дней"
+    },
+    "rectal_tumor": {
+      "alpha_beta_gy": 10,
+      "alpha_gy_inv": 0.35,
+      "n0_cells": 1e7
+    },
+    "esophagus_tumor": {
+      "alpha_beta_gy": 10,
+      "alpha_gy_inv": 0.35,
+      "notes": "Зависит от гистологии (SCC vs adenocarcinoma)"
+    },
+    "cns_benign": {
+      "alpha_beta_gy": 2.5,
+      "alpha_beta_range": "2-3",
+      "type": "late_responding",
+      "notes": "Менингиома, аденома гипофиза, AVM"
+    },
+    "cns_malignant": {
+      "alpha_beta_gy": 10,
+      "type": "early_responding",
+      "notes": "Глиобластома, метастазы"
+    },
+    "medulloblastoma": {
+      "alpha_beta_gy": 11.01,
+      "alpha_beta_range": "5.23-16.79",
+      "alpha_gy_inv": 0.29,
+      "alpha_range": "0.26-0.32",
+      "beta_gy_inv_sq": 0.024,
+      "beta_range": "0.019-0.028",
+      "sf2": 0.51,
+      "sf2_range": "0.49-0.53",
+      "notes": "Педиатрическая опухоль, высокий α/β"
+    }
+  },
+  "ntcp_parameters": {
+    "lung_pneumonitis": {
+      "grade": "G2+",
+      "emami_burman": {
+        "td50_gy": 24.5,
+        "m": 0.18,
+        "n": 0.87,
+        "alpha_beta_gy": 3
+      },
+      "quantec": {
+        "td50_gy": 29.19,
+        "m": 0.374,
+        "n": 0.99,
+        "note": "Адаптирован для AAA алгоритма расчета дозы"
+      },
+      "breast_rili": {
+        "td50_gy": 24.66,
+        "m": 0.22,
+        "n": 0.40
+      },
+      "quantec_recommendations": {
+        "mean_dose_lt_20gy_ntcp_pct": 20,
+        "mean_dose_lt_13gy_ntcp_pct": 10,
+        "mean_dose_lt_7gy_ntcp_pct": 5,
+        "v20_le_30pct_ntcp": "~20%"
+      }
+    },
+    "rectum_late": {
+      "grade": "G2+ bleeding",
+      "emami_burman": {
+        "td50_gy": 80,
+        "m": 0.13,
+        "n": 0.12,
+        "alpha_beta_gy": 3
+      },
+      "quantec": {
+        "td50_gy": 76.9,
+        "td50_ci_low": 73.7,
+        "td50_ci_high": 80.1,
+        "m": 0.13,
+        "m_ci_low": 0.1,
+        "m_ci_high": 0.17,
+        "n": 0.09,
+        "n_ci_low": 0.04,
+        "n_ci_high": 0.14,
+        "alpha_beta_gy": 4.5,
+        "alpha_beta_range": "3-6"
+      },
+      "by_grade": {
+        "g1_lrb": {
+          "td50_gy": 57.3,
+          "m": 0.37,
+          "n": 0.23
+        },
+        "g2_lrb": {
+          "td50_gy": 75.8,
+          "m": 0.32,
+          "n": 0.19
+        }
+      },
+      "quantec_dose_volume_constraints": {
+        "v50_le_50pct": {"ntcp_g2_pct": 15, "ntcp_g3_pct": 10},
+        "v60_le_35pct": {"ntcp_g2_pct": 15, "ntcp_g3_pct": 10},
+        "v65_le_25pct": {"ntcp_g2_pct": 15, "ntcp_g3_pct": 10},
+        "v70_le_20pct": {"ntcp_g2_pct": 15, "ntcp_g3_pct": 10},
+        "v75_le_15pct": {"ntcp_g2_pct": 15, "ntcp_g3_pct": 10}
+      }
+    },
+    "bladder": {
+      "grade": "acute_urinary_g2",
+      "emami_burman": {
+        "td50_whole_gy": 80,
+        "td5_whole_gy": 65,
+        "alpha_beta_gy": 3
+      },
+      "acute_toxicity": {
+        "v40gy_threshold_pct": 42,
+        "auc": 0.69
+      },
+      "quantec_recommendations": {
+        "dmax_le_65gy": "NTCP(G3) <6%",
+        "v65_le_50pct": "65% volume",
+        "v70_le_35pct": "70% volume",
+        "v75_le_25pct": "75% volume",
+        "v80_le_15pct": "80% volume"
+      }
+    },
+    "liver_rild": {
+      "emami_burman": {
+        "td50_whole_gy": 40,
+        "td5_whole_gy": 30,
+        "alpha_beta_gy": 2.5
+      },
+      "quantec_normal_liver": {
+        "mean_dose_5pct_gy": 32,
+        "mean_dose_50pct_gy": 42,
+        "note": "Для пациентов без цирроза"
+      },
+      "quantec_childpugh_a": {
+        "mean_dose_5pct_gy": 28,
+        "mean_dose_50pct_gy": 36,
+        "note": "Более низкая толерантность"
+      },
+      "sbrt_3fractions": {
+        "mean_dose_5pct_gy": 13,
+        "critical_volume_cc": 700,
+        "dmax_gy": 15
+      },
+      "sbrt_6fractions": {
+        "mean_dose_5pct_gy": 15
+      }
+    },
+    "heart": {
+      "pericarditis_emami": {
+        "td50_gy": 48,
+        "m": 0.10,
+        "n": 0.35
+      },
+      "pericardial_effusion": {
+        "any_grade": {
+          "td50_gy": 50.6,
+          "m": 0.13,
+          "n": 0.63
+        },
+        "symptomatic": {
+          "td50_gy": 48,
+          "m": 0.10,
+          "n": 0.35
+        }
+      },
+      "valve_dysfunction_rs": {
+        "d50_gy": 28,
+        "d50_range": "24-33"
+      },
+      "quantec_recommendations": {
+        "mean_dose_le_26gy": "NTCP(pericarditis) <15%",
+        "v30_le_46pct": "NTCP(pericarditis) <15%",
+        "v25_le_10pct": "NTCP(cardiac mortality) <1%"
+      }
+    },
+    "spinal_cord": {
+      "emami_burman": {
+        "td50_gy": 66.5,
+        "td5_gy": 50,
+        "m": 0.14,
+        "m_ci_low": 0.0,
+        "m_ci_high": 0.86,
+        "n": 0.05,
+        "alpha_beta_gy": 2,
+        "note": "Низкий α/β, чувствителен к фракционированию"
+      },
+      "quantec": {
+        "dmax_le_50gy_ntcp_pct": 0.2,
+        "dmax_60gy_ntcp_pct": 6,
+        "dmax_69gy_ntcp_pct": 50
+      },
+      "sbrt_single": {
+        "dmax_le_13gy_ntcp_pct": 1
+      },
+      "sbrt_3fractions": {
+        "dmax_le_20gy_ntcp_pct": 1
+      }
+    },
+    "brainstem": {
+      "emami_burman": {
+        "td50_gy": 65,
+        "td5_gy": 50,
+        "alpha_beta_gy": 2
+      },
+      "quantec": {
+        "dmax_le_54gy_ntcp_5pct": "standard",
+        "d1_10cc_le_59gy_ntcp_5pct": "standard",
+        "dmax_le_64gy_ntcp_5pct": "point dose"
+      },
+      "srs_single": {
+        "dmax_le_12_5gy_ntcp_5pct": "acoustic neuroma"
+      }
+    },
+    "parotid_gland": {
+      "emami_burman": {
+        "td50_gy": 46,
+        "td5_gy": 32
+      },
+      "quantec_bilateral": {
+        "mean_dose_20pct_gy": 25,
+        "mean_dose_50pct_gy": 39,
+        "description": "Both glands"
+      },
+      "quantec_unilateral": {
+        "mean_dose_20pct_gy": 20,
+        "description": "At least one gland"
+      },
+      "ntcp_xerostomia": {
+        "td50_gy": 40.8,
+        "td50_range": "37.8-43.9",
+        "m": 0.54,
+        "m_range": "0.48-0.59"
+      },
+      "clinical_recommendations": {
+        "non_oral_cavity_mean_dose_le_gy": 30,
+        "oral_cavity_mean_dose_le_gy": 50,
+        "modified_quantec_mean_dose_le_gy": 26
+      }
+    },
+    "esophagus": {
+      "emami_burman_stricture": {
+        "td50_gy": 68,
+        "td5_gy": 55
+      },
+      "quantec_acute_g3": {
+        "mean_dose_threshold_gy": 34,
+        "ntcp_range_pct": "5-20"
+      },
+      "quantec_acute_g2": {
+        "v35_lt_pct": 50,
+        "v50_lt_pct": 40,
+        "v70_lt_pct": 20,
+        "ntcp_pct": 30
+      }
+    },
+    "kidney_bilateral": {
+      "emami_burman": {
+        "td50_gy": 28,
+        "td5_gy": 23
+      },
+      "quantec": {
+        "mean_dose_5pct_gy": 16.5,
+        "mean_dose_5pct_range": "15-18",
+        "mean_dose_50pct_gy": 28,
+        "v12_le_pct": 55,
+        "v20_le_pct": 32,
+        "v23_le_pct": 30,
+        "v28_le_pct": 20
+      }
+    },
+    "optic_nerve_chiasm": {
+      "emami_burman": {
+        "td50_gy": 65,
+        "td5_gy": 50
+      },
+      "quantec": {
+        "dmax_lt_55gy_ntcp_3pct": "standard",
+        "dmax_55_60gy_ntcp_3_7pct": "range",
+        "dmax_gt_60gy_ntcp_7_20pct": "range",
+        "v55_risk": "RION"
+      },
+      "srs_single": {
+        "dmax_le_12gy_ntcp_10pct": "standard"
+      }
+    },
+    "retina": {
+      "emami_burman": {
+        "td50_gy": 65,
+        "td5_gy": 45
+      },
+      "risk_predictors": {
+        "v50": "associated with retinopathy",
+        "v55": "associated with retinopathy"
+      }
+    },
+    "lens": {
+      "emami_burman": {
+        "td50_gy": 18,
+        "td5_gy": 10
+      }
+    },
+    "larynx": {
+      "necrosis_emami": {
+        "td50_gy": 80,
+        "td5_gy": 70
+      },
+      "edema_emami": {
+        "td5_gy": 45
+      },
+      "quantec_with_chemo": {
+        "dmax_le_66gy": "vocal dysfunction NTCP <20%",
+        "mean_dose_le_50gy": "aspiration NTCP <30%"
+      },
+      "quantec_without_chemo": {
+        "mean_dose_le_44gy": "edema NTCP <20%"
+      }
+    },
+    "small_bowel": {
+      "emami_burman": {
+        "td50_gy": 57.5,
+        "td50_range": "55-60",
+        "td5_gy": 40,
+        "td50_5_gy": 65,
+        "td5_5_gy": 50
+      },
+      "quantec_acute_g3_loops": {
+        "v15_threshold_cc": 120,
+        "ntcp_pct": 10
+      },
+      "quantec_acute_g3_space": {
+        "v45_threshold_cc": 195,
+        "ntcp_pct": 10
+      },
+      "ntcp_algit_g2": {
+        "v30_lt_pct": 20.4,
+        "regression_coefficient": "0.037-0.039"
+      }
+    },
+    "colon": {
+      "emami_burman": {
+        "td50_gy": 55,
+        "td5_gy": 45
+      },
+      "clinical_limits": {
+        "max_dose_gy": 54
+      }
+    },
+    "stomach": {
+      "emami_burman": {
+        "td50_gy": 65,
+        "td5_gy": 50
+      },
+      "quantec": {
+        "d100_le_45gy_ntcp_7pct": "ulceration"
+      }
+    },
+    "brain": {
+      "quantec_necrosis": {
+        "dmax_72gy_ntcp_5pct": "standard",
+        "dmax_90gy_ntcp_10pct": "standard"
+      },
+      "srs_single": {
+        "v12_le_5_10cc_ntcp_20pct": "recommendation"
+      }
+    },
+    "cochlea": {
+      "quantec_hearing_loss": {
+        "mean_dose_threshold_gy": 45,
+        "frequency_khz": 4,
+        "ntcp_30pct": "standard"
+      },
+      "srs": {
+        "prescription_dose_le_14gy": "NTCP <25% functional hearing"
+      }
+    },
+    "pharynx_constrictors": {
+      "quantec_dysphagia": {
+        "mean_dose_threshold_gy": 50,
+        "ntcp_20pct": "standard"
+      }
+    },
+    "penile_bulb": {
+      "quantec_ed": {
+        "mean_dose_threshold_gy": 50,
+        "d90_threshold_gy": 50,
+        "d65_threshold_gy": 70,
+        "ntcp_le_35pct_at_mean_d90_gy": 50,
+        "ntcp_le_55pct_at_d65_gy": 70
+      }
+    }
+  },
+  "radiobiological_formulas": {
+    "surviving_fraction_lq": {
+      "formula": "SF = exp(-αD - βD²)",
+      "parameters": {
+        "alpha": "Gy⁻¹",
+        "beta": "Gy⁻²",
+        "D": "Dose (Gy)"
+      }
+    },
+    "bed_calculation": {
+      "formula": "BED = nd(1 + d/(α/β)) - (ln2/Tpot)×(T - Tk)",
+      "parameters": {
+        "n": "Number of fractions",
+        "d": "Dose per fraction (Gy)",
+        "alpha_beta": "Ratio (Gy)",
+        "Tpot": "Potential doubling time (days)",
+        "T": "Total treatment time (days)",
+        "Tk": "Kick-off time (days)"
+      },
+      "note": "Repopulation term only applied when T > Tk"
+    },
+    "eqd2_calculation": {
+      "formula": "EQD2 = D × (d + α/β) / (2 + α/β)",
+      "parameters": {
+        "D": "Total dose (Gy)",
+        "d": "Dose per fraction (Gy)",
+        "alpha_beta": "Ratio (Gy)"
+      }
+    },
+    "tcp_niemierko": {
+      "formula": "TCP = 1 / (1 + (TCD50/EUD)^(4×γ50))",
+      "parameters": {
+        "TCD50": "Dose for 50% tumor control (Gy)",
+        "EUD": "Equivalent uniform dose (Gy)",
+        "gamma50": "Normalized slope at TCD50 (typically ≥1)"
+      }
+    },
+    "geud_calculation": {
+      "formula": "gEUD = (Σ(vi × Di^(1/n)))^n",
+      "parameters": {
+        "vi": "Fractional volume receiving dose Di",
+        "Di": "Dose in voxel i (Gy)",
+        "n": "Tissue-specific parameter (negative for tumors, positive for OAR)"
+      },
+      "volume_effect": {
+        "n_to_0": "Maximum dose dominates (serial organs)",
+        "n_to_1": "Mean dose (parallel organs)",
+        "typical_organs": {
+          "n_negative_tumors": "-10",
+          "n_positive_lung": "0.4"
+        }
+      }
+    },
+    "ntcp_lkb_model": {
+      "formula": "NTCP = (1/√(2π)) ∫_{-∞}^t e^(-x²/2) dx",
+      "reduction_formula": "t = (gEUD - TD50) / (m × TD50)",
+      "parameters": {
+        "TD50": "Tolerance dose for 50% complication (Gy)",
+        "m": "Sigmoid curve slope parameter",
+        "n": "Volume effect parameter (0=serial, 1=parallel)",
+        "gEUD": "Generalized equivalent uniform dose"
+      }
+    },
+    "tcp_poisson": {
+      "formula": "TCP = exp(-N₀ × SF(D))",
+      "parameters": {
+        "N0": "Number of clonogenic cells",
+        "SF": "Surviving fraction at dose D"
+      }
+    }
+  },
+  "repopulation_parameters": {
+    "kick_off_time_tk": {
+      "head_neck_days": 24,
+      "head_neck_range": "21-28",
+      "cervix_days": 19,
+      "larynx_days": 28,
+      "general_days": 25,
+      "general_range": "18-35",
+      "note": "Start of accelerated repopulation during radiotherapy"
+    },
+    "potential_doubling_time_tpot": {
+      "median_tumors_days": 5,
+      "head_neck_rapid_days": 3,
+      "lung_days": 4.5,
+      "lung_range": "4-5",
+      "cervix_days": 4.5,
+      "cervix_range": "4-5",
+      "prostate_days": 30,
+      "prostate_range": "19-42",
+      "note": "Tpot is typically < Teff during treatment"
+    },
+    "dose_loss_per_day": {
+      "head_neck_gy": 0.7,
+      "head_neck_range": "0.6-0.8",
+      "cervix_gy": 0.6,
+      "general_gy": 0.65,
+      "note": "Equivalent BED loss per day of prolongation after Tk"
+    },
+    "clinical_implication": "Prolong OTT > Tk significantly reduces local control. Target completion near Tk to minimize repopulation effect"
+  },
+  "sf2_values": {
+    "radiosensitive": {
+      "breast_mcf7": 0.30,
+      "cervix_sensitive": 0.36
+    },
+    "intermediate": {
+      "head_neck_median": 0.40,
+      "head_neck_range": "0.3-0.8",
+      "prostate": 0.45,
+      "prostate_range": "0.4-0.5",
+      "lung_a549": 0.62,
+      "lung_range": "0.4-0.7"
+    },
+    "radioresistant": {
+      "melanoma": 0.38,
+      "melanoma_range": "0.22-0.54",
+      "sarcoma": 0.38,
+      "sarcoma_range": "0.22-0.54"
+    },
+    "interpretation": {
+      "sf2_lt_0_3": "High radiosensitivity",
+      "sf2_0_3_0_6": "Intermediate sensitivity",
+      "sf2_gt_0_6": "Radioresistance"
+    },
+    "note": "SF2 is independent prognostic factor for local control in H&N tumors (p=0.015)"
+  },
+  "clonogenic_cells_n0": {
+    "typical_range": "1e5 - 1e8",
+    "tcp_standard": 1e5,
+    "tcp_conservative": 5e6,
+    "tcp_large_tumor": 1e7,
+    "prostate": 5e6,
+    "head_neck": 5e6,
+    "breast": 1e7,
+    "lung": 1e7,
+    "note": "N0 depends on tumor volume and clonogenic cell density. Unknown for individual patient"
+  },
+  "alpha_beta_ratios": {
+    "tumors_high": {
+      "nsclc": {"value": 10, "range": "10-20", "type": "fast_proliferating", "sbrt_note": "20 Gy for SBRT"},
+      "head_neck": {"value": 10, "range": "8-10", "type": "fast_proliferating", "heterogeneity": "high"},
+      "cervix": {"value": 10, "type": "fast_proliferating"},
+      "rectum": {"value": 10, "type": "adenocarcinoma"},
+      "esophagus": {"value": 10, "note": "Depends on histology"},
+      "melanoma_bm": {"value": 12.5, "range": "10-15", "type": "radioresistant"},
+      "cns_malignant": {"value": 10, "type": "early_responding"},
+      "medulloblastoma": {"value": 11, "range": "5.23-16.79", "type": "pediatric"}
+    },
+    "tumors_low": {
+      "prostate": {"value": 1.6, "range": "1.3-2.9", "type": "slow_proliferating", "hypofractionation": "benefit"},
+      "breast": {"value": 3.5, "range": "2-4.5", "type": "adenocarcinoma", "hypofractionation": "benefit"},
+      "cns_benign": {"value": 2.5, "range": "2-3", "type": "late_responding"}
+    },
+    "normal_tissues_late_effects": {
+      "spinal_cord": {"value": 2, "type": "serial_organ", "note": "High sensitivity to fractionation"},
+      "brainstem": {"value": 2, "type": "serial_organ"},
+      "rectum_late": {"value": 4.5, "range": "3-6", "depends_on": "endpoint"},
+      "liver_rild": {"value": 2.5},
+      "bladder": {"value": 3},
+      "kidney": {"value": 3},
+      "heart": {"value": 3},
+      "lung_pneumonitis": {"value": 3}
+    }
+  },
+  "quality_assurance_notes": {
+    "tcp_models": {
+      "assumptions": "Homogeneous radiosensitivity, unknown tumor N0, no hypoxia/heterogeneity",
+      "limitations": "Individual variability high, depends on tumor biology"
+    },
+    "ntcp_models": {
+      "assumptions": "Population-based parameters, specific treatment techniques",
+      "limitations": "Individual genetic/clinical variability, comorbidities, age not accounted for",
+      "recommendations": "Combine NTCP with dose-volume constraints and clinical experience"
+    },
+    "lq_model": {
+      "validity": "Valid for single fractions <8-10 Gy",
+      "issues_high_dose": "May underestimate effect at >8-10 Gy/fraction",
+      "repopulation": "Assumes exponential, may be non-linear"
+    }
+  },
+  "clinical_recommendations": {
+    "tcp_assessment": {
+      "prostate": "Use α/β 1.5-3 Gy, expect benefit from hypofractionation",
+      "fast_proliferating": "α/β=10 Gy for H&N, cervix, NSCLC",
+      "repopulation": "Account for repopulation when OTT > Tk (subtract 0.6-0.8 Gy/day from BED)",
+      "overall_time": "Complete treatment by Tk to minimize repopulation loss"
+    },
+    "ntcp_assessment": {
+      "use_quantec": "Preferred for modern 3D-CRT/IMRT/VMAT",
+      "use_emami": "More conservative (older techniques)",
+      "endpoint_specific": "Choose Grade 1, 2, or 3+ parameters based on clinical threshold",
+      "volume_effect": "Use n≈0 for serial (cord, brainstem), n≈1 for parallel (lung, liver)",
+      "uncertainty": "Perform sensitivity analysis for TD50, n, m parameters"
+    },
+    "hypofractionation_sbrt": {
+      "bed_correction": "Apply α/β-adjusted BED or EQD2",
+      "specific_parameters": "Use SBRT-specific parameters (e.g., liver SBRT)",
+      "lq_validity": "LQ model may underestimate at >8-10 Gy/fx"
+    },
+    "combine_approaches": "Integrate NTCP modeling with dose-volume constraints and institutional experience"
+  }
+}

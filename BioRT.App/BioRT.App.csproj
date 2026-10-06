@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+
+		<!-- Windows + WinForms -->
+		<TargetFramework>net9.0-windows</TargetFramework>
+
+		<UseWindowsForms>true</UseWindowsForms>
+
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="data\tcp_ntcp_params.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\BioRT.Core\BioRT.Core.csproj" />
+		<ProjectReference Include="..\BioRT.IO\BioRT.IO.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="data\tcp_ntcp_params.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+</Project>

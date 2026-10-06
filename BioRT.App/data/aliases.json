@@ -1,0 +1,43 @@
+{
+    "parotid_gland": {
+        "aliases": [
+            "parotid",
+            "parotid_l",
+            "parotid_r",
+            "parotid left",
+            "parotid right"
+        ]
+    },
+
+    "submandibular_gland": {
+        "aliases": [
+            "glnd_submand_l",
+            "glnd_submand_r",
+            "submand",
+            "submandibular",
+            "submandibular_l",
+            "submandibular_r"
+        ]
+    },
+
+    "spinal_cord": {
+        "aliases": [
+            "spinalcord",
+            "spinal_cord",
+            "cord"
+        ]
+    },
+
+    "larynx": {
+        "aliases": [
+            "larynx"
+        ]
+    },
+
+    "esophagus": {
+        "aliases": [
+            "esophagus",
+            "oesophagus"
+        ]
+    }
+}
