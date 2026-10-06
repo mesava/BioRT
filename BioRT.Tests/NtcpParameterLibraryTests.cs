@@ -27,7 +27,7 @@ public class NtcpParameterLibraryTests
             .GetProperty("schema_version")
             .GetString();
 
-        Assert.Equal("0.1.0", version);
+        Assert.Equal("0.2.0", version);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("xerostomia_models").ValueKind);
     }
 
