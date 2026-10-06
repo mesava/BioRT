@@ -11,7 +11,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-test:
     runs-on: windows-latest
 
     steps:
@@ -23,8 +23,14 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Restore
+      - name: Restore application
         run: dotnet restore BioRT.sln
 
-      - name: Build
+      - name: Restore tests
+        run: dotnet restore BioRT.Tests/BioRT.Tests.csproj
+
+      - name: Build application
         run: dotnet build BioRT.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test BioRT.Tests/BioRT.Tests.csproj --configuration Release --no-restore --verbosity normal
