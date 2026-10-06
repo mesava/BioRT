@@ -260,15 +260,15 @@ internal class Program
         string dataPath = Path.Combine(
             AppContext.BaseDirectory, "data");
 
-        string ntcpPath = Path.Combine(
-            dataPath, "tcp_ntcp_params.json");
+        string ntcpLibraryPath = Path.Combine(
+            dataPath, "ntcp_parameters_v2.json");
 
         string aliasesPath = Path.Combine(
             dataPath, "aliases.json");
 
-        if (!File.Exists(ntcpPath))
+        if (!File.Exists(ntcpLibraryPath))
         {
-            Console.WriteLine($"ERROR: NTCP parameter file not found: {ntcpPath}");
+            Console.WriteLine($"ERROR: NTCP parameter library not found: {ntcpLibraryPath}");
             return;
         }
 
@@ -278,41 +278,104 @@ internal class Program
             return;
         }
 
-        var ntcpJson = JsonDocument.Parse(File.ReadAllText(ntcpPath));
         var matcher = new StructureMatcher(aliasesPath);
+        var ntcpLibrary = NtcpModelLibrary.Load(ntcpLibraryPath);
+        var ntcpSelector = new NtcpModelSelector(ntcpLibrary);
+        var ntcpEngine = new NtcpModelEngine();
+
+        var ntcpContext = new NtcpEvaluationContext
+        {
+            DosePerFractionGy = plan.DosePerFraction > 0
+                ? plan.DosePerFraction
+                : null
+        };
 
         Console.WriteLine();
-        Console.WriteLine("NTCP (Xerostomia, mean-dose LKB):");
+        Console.WriteLine("NTCP xerostomia — provenance-aware LKB models:");
+        Console.WriteLine(
+            $"Plan fractionation context: N={plan.Fractions}, " +
+            $"nominal target dose/fx={(plan.DosePerFraction > 0 ? $"{plan.DosePerFraction:F3} Gy" : "unknown")}");
 
         foreach (var dvh in plan.DVHs.Values.Where(d => !ptvRx.ContainsKey(d.Name)))
         {
             string? canonical = matcher.Match(dvh.Name);
-            if (canonical == null)
+
+            if (!string.Equals(
+                    canonical,
+                    "parotid_gland",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var models = ntcpSelector.Select(new NtcpModelQuery
+            {
+                CanonicalStructure = canonical,
+                EquationId = "lkb_probit"
+            });
+
+            if (models.Count == 0)
                 continue;
 
-            if (!ntcpJson.RootElement
-                .GetProperty("ntcp_parameters")
-                .TryGetProperty(canonical, out var organ))
-                continue;
+            Console.WriteLine();
+            Console.WriteLine($"{dvh.Name}  Dmean={dvh.MeanDose:F2} Gy");
 
-            if (!organ.TryGetProperty("ntcp_xerostomia", out var ntcp))
-                continue;
+            foreach (var model in models)
+            {
+                var result = ntcpEngine.Evaluate(
+                    model,
+                    dvh,
+                    ntcpContext);
 
-            double td50 = ntcp.GetProperty("td50_gy").GetDouble();
-            double m = ntcp.GetProperty("m").GetDouble();
-
-            double value = LkbModel.CalculateNTCP(dvh, td50, m, n: 1.0);
-
-            Console.WriteLine(
-                $"{dvh.Name,-15} NTCP = {value * 100:F2}%  (TD50={td50}, m={m})");
+                PrintNtcpResult(result);
+            }
         }
 
+        Console.WriteLine();
+        Console.WriteLine("Additional xerostomia models requiring clinical/model-specific inputs:");
+
+        foreach (var model in ntcpSelector.Select(new NtcpModelQuery
+                 {
+                     EquationId = "logistic"
+                 }))
+        {
+            var result = ntcpEngine.Evaluate(
+                model,
+                dvh: null,
+                context: new NtcpEvaluationContext());
+
+            PrintNtcpResult(result);
+        }
         Console.WriteLine();
         Console.WriteLine("Finished successfully.");
         Console.ReadKey();
     }
-}
 
+    private static void PrintNtcpResult(NtcpEvaluationResult result)
+    {
+        string probability = result.Probability is double value
+            ? $"{value * 100.0:F2}%"
+            : "n/a";
+
+        Console.WriteLine(
+            $"  {result.ModelId,-42} {probability,8}  [{result.Status}]");
+        Console.WriteLine(
+            $"    Endpoint: {result.EndpointName}" +
+            (string.IsNullOrWhiteSpace(result.TimePoint)
+                ? ""
+                : $" | {result.TimePoint}"));
+
+        if (!string.IsNullOrWhiteSpace(result.Pmid))
+            Console.WriteLine($"    Source: PMID {result.Pmid}");
+
+        if (result.MissingInputs.Count > 0)
+            Console.WriteLine(
+                $"    Missing inputs: {string.Join(", ", result.MissingInputs)}");
+
+        foreach (string warning in result.Warnings)
+            Console.WriteLine($"    WARNING: {warning}");
+    }
+}
 // ================= LOG HELPER =================
 
 class DualWriter : TextWriter
