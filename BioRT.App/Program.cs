@@ -239,11 +239,29 @@ internal class Program
 
         // ================= NTCP XEROSTOMIA =================
 
+        string dataPath = Path.Combine(
+            AppContext.BaseDirectory, "data");
+
         string ntcpPath = Path.Combine(
-            AppContext.BaseDirectory, "data", "tcp_ntcp_params.json");
+            dataPath, "tcp_ntcp_params.json");
+
+        string aliasesPath = Path.Combine(
+            dataPath, "aliases.json");
+
+        if (!File.Exists(ntcpPath))
+        {
+            Console.WriteLine($"ERROR: NTCP parameter file not found: {ntcpPath}");
+            return;
+        }
+
+        if (!File.Exists(aliasesPath))
+        {
+            Console.WriteLine($"ERROR: Structure alias file not found: {aliasesPath}");
+            return;
+        }
 
         var ntcpJson = JsonDocument.Parse(File.ReadAllText(ntcpPath));
-        var matcher = new StructureMatcher(ntcpPath);
+        var matcher = new StructureMatcher(aliasesPath);
 
         Console.WriteLine();
         Console.WriteLine("NTCP (Xerostomia, mean-dose LKB):");

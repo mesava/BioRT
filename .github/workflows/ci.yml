@@ -1,0 +1,30 @@
+name: BioRT CI
+
+on:
+  push:
+    branches:
+      - main
+      - "fix/**"
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore BioRT.sln
+
+      - name: Build
+        run: dotnet build BioRT.sln --configuration Release --no-restore
