@@ -27,7 +27,7 @@ public class NtcpParameterLibraryTests
             .GetProperty("schema_version")
             .GetString();
 
-        Assert.Equal("0.2.0", version);
+        Assert.Equal("0.3.0", version);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("xerostomia_models").ValueKind);
     }
 
@@ -70,6 +70,15 @@ public class NtcpParameterLibraryTests
 
         var doseBasis = model.GetProperty("dose_basis");
         Assert.Equal(3.0, doseBasis.GetProperty("alpha_beta_gy").GetDouble(), precision: 12);
+
+        string? transform = model
+            .GetProperty("implementation")
+            .GetProperty("fractionation_transform")
+            .GetString();
+
+        Assert.Equal(
+            "mean_dose_eqd2_if_prescription_fraction_differs",
+            transform);
     }
 
     [Fact]
