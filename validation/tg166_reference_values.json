@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "source": "AAPM Report No. 166 (2012), Tables VI-VIII",
+    "report_title": "The Use and QA of Biologically Related Models for Treatment Planning",
+    "purpose": "Independent commissioning reference values for BioRT biological-metric validation",
+    "status": "reference_only_until_official_dvh_or_dicom_datasets_are_imported"
+  },
+  "benchmark_phantom": {
+    "beam": {
+      "energy": "6 MV",
+      "field_cm": [20, 20],
+      "ssd_cm": 100,
+      "prescription_gy": 72,
+      "fractions": 40,
+      "prescription_depth_cm": 6
+    },
+    "structures": [
+      {
+        "name": "PTV Rectangle",
+        "dimensions_cm": [4, 4, 2],
+        "x_range_cm": [-2, 2],
+        "y_range_cm": [-2, 2],
+        "depth_range_cm": [4, 6]
+      },
+      {
+        "name": "Rectangle 1",
+        "dimensions_cm": [2, 4, 8],
+        "x_range_cm": [-2, 0],
+        "y_range_cm": [-2, 2],
+        "depth_range_cm": [6, 14]
+      },
+      {
+        "name": "Rectangle 2",
+        "dimensions_cm": [2, 2, 18],
+        "x_range_cm": [0, 2],
+        "y_range_cm": [-2, 2],
+        "depth_range_cm": [6, 24]
+      },
+      {
+        "name": "Triangle 1",
+        "description": "4 x 4 cm base at depth 4 cm, tapering/expanding through depth 24 cm as defined in TG-166 Figure 5/Table VI",
+        "depth_range_cm": [4, 24]
+      }
+    ]
+  },
+  "table_vii": {
+    "note": "Reference TCP/NTCP values from the Pinnacle Biological Response implementation. NTCP rows use the relative-seriality model, not BioRT's current LKB implementation.",
+    "entries": [
+      {
+        "structure": "PTV Rectangle",
+        "function": "TCP",
+        "d50_gy": 63.3,
+        "gamma": 5.0,
+        "alpha_beta_gy": 10.0,
+        "seriality": null,
+        "reference_percent": 94.1
+      },
+      {
+        "structure": "Rectangle 1",
+        "function": "TCP",
+        "d50_gy": 44.2,
+        "gamma": 1.6,
+        "alpha_beta_gy": 10.0,
+        "seriality": null,
+        "reference_percent": 80.3
+      },
+      {
+        "structure": "PTV Rectangle",
+        "function": "NTCP",
+        "d50_gy": 80.0,
+        "gamma": 3.0,
+        "alpha_beta_gy": 3.0,
+        "seriality": 0.18,
+        "reference_percent": 26.6
+      },
+      {
+        "structure": "Rectangle 1",
+        "function": "NTCP",
+        "d50_gy": 75.1,
+        "gamma": 2.8,
+        "alpha_beta_gy": 3.0,
+        "seriality": 8.4,
+        "reference_percent": 18.1
+      },
+      {
+        "structure": "Rectangle 2",
+        "function": "NTCP",
+        "d50_gy": 55.3,
+        "gamma": 3.1,
+        "alpha_beta_gy": 3.0,
+        "seriality": 0.69,
+        "reference_percent": 23.5
+      },
+      {
+        "structure": "Triangle 1",
+        "function": "NTCP",
+        "d50_gy": 46.0,
+        "gamma": 1.8,
+        "alpha_beta_gy": 3.0,
+        "seriality": 1.0,
+        "reference_percent": 29.5
+      }
+    ]
+  },
+  "table_viii_geud_gy": [
+    {"case":"Head & Neck","organ":"PTV 70","a":-10,"monaco":74.40,"pinnacle":71.99,"eclipse":72.15},
+    {"case":"Head & Neck","organ":"PTV 54","a":-10,"monaco":59.59,"pinnacle":61.04,"eclipse":59.01},
+    {"case":"Head & Neck","organ":"PTV 50","a":-10,"monaco":53.79,"pinnacle":53.25,"eclipse":52.13},
+    {"case":"Head & Neck","organ":"Cord PRV","a":20,"monaco":27.19,"pinnacle":27.77,"eclipse":39.91},
+    {"case":"Head & Neck","organ":"Lt parotid gland","a":1,"monaco":23.12,"pinnacle":23.12,"eclipse":23.61},
+    {"case":"Head & Neck","organ":"Rt parotid gland","a":1,"monaco":20.57,"pinnacle":23.05,"eclipse":23.11},
+    {"case":"Head & Neck","organ":"Mandible","a":10,"monaco":38.52,"pinnacle":38.66,"eclipse":38.78},
+
+    {"case":"Prostate","organ":"PTV 70.2","a":-10,"monaco":73.61,"pinnacle":71.77,"eclipse":71.41},
+    {"case":"Prostate","organ":"Rectum","a":8,"monaco":46.11,"pinnacle":44.61,"eclipse":41.30},
+    {"case":"Prostate","organ":"Bladder","a":8,"monaco":43.21,"pinnacle":43.00,"eclipse":45.79},
+    {"case":"Prostate","organ":"Lt femoral head","a":12,"monaco":14.76,"pinnacle":20.09,"eclipse":18.21},
+    {"case":"Prostate","organ":"Rt femoral head","a":12,"monaco":16.86,"pinnacle":18.43,"eclipse":13.90},
+    {"case":"Prostate","organ":"Pubic bone","a":12,"monaco":41.25,"pinnacle":41.19,"eclipse":49.06},
+
+    {"case":"Brain","organ":"GTV 54","a":-10,"monaco":56.08,"pinnacle":55.55,"eclipse":56.56},
+    {"case":"Brain","organ":"PTV 50.4","a":-10,"monaco":54.11,"pinnacle":53.90,"eclipse":53.26},
+    {"case":"Brain","organ":"Brain stem","a":16,"monaco":41.61,"pinnacle":40.06,"eclipse":42.80},
+    {"case":"Brain","organ":"Optic chiasm","a":16,"monaco":46.11,"pinnacle":44.99,"eclipse":41.68},
+    {"case":"Brain","organ":"Lt eye","a":16,"monaco":1.94,"pinnacle":2.29,"eclipse":1.08},
+    {"case":"Brain","organ":"Rt eye","a":16,"monaco":2.04,"pinnacle":2.45,"eclipse":1.13},
+    {"case":"Brain","organ":"Lt optic nerve","a":16,"monaco":12.33,"pinnacle":10.12,"eclipse":8.68},
+    {"case":"Brain","organ":"Rt optic nerve","a":16,"monaco":14.07,"pinnacle":17.16,"eclipse":8.61},
+    {"case":"Brain","organ":"Lt inner ear","a":16,"monaco":16.28,"pinnacle":18.60,"eclipse":18.22},
+    {"case":"Brain","organ":"Rt inner ear","a":16,"monaco":34.36,"pinnacle":34.00,"eclipse":34.57}
+  ],
+  "published_dataset_locations": {
+    "prostate_zip": "http://www.aapm.org/org/committees/TG166/TG166prostate.zip",
+    "head_neck_zip": "http://www.aapm.org/org/committees/TG166/TG166headneck.zip",
+    "brain_zip": "http://www.aapm.org/org/committees/TG166/TG166brain.zip",
+    "dvh_spreadsheet": "http://www.aapm.org/org/committees/TG166/EUD_Monaco_Pinnacle_Eclipse.xls"
+  }
+}
