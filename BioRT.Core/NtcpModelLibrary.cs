@@ -81,6 +81,10 @@ public sealed class NtcpModelLibrary
                 FractionationTransform =
                     GetOptionalString(implNode, "fractionation_transform"),
                 FractionationNote = GetOptionalString(implNode, "fractionation_note"),
+                MinimumPrescriptionFractionSizeGy =
+                    GetOptionalDouble(implNode, "minimum_prescription_fraction_size_gy"),
+                MaximumPrescriptionFractionSizeGy =
+                    GetOptionalDouble(implNode, "maximum_prescription_fraction_size_gy"),
                 RequiredPredictors = GetStringArray(implNode, "required_predictors"),
                 RequiredCategoricalPredictors =
                     GetStringArray(implNode, "required_categorical_predictors")
