@@ -48,7 +48,7 @@ public class NtcpModelEngineTests
     }
 
     [Fact]
-    public void SemenenkoRejectsNonTwoGyPlanUntilEqd2IsImplemented()
+    public void SemenenkoAtTwoGyPrescription_UsesPhysicalMeanDose()
     {
         var model = LoadModel("semenenko_li_2008_xerostomia_lkb_6m");
         var engine = new NtcpModelEngine();
@@ -58,14 +58,67 @@ public class NtcpModelEngineTests
             UniformCumulativeDvh(31.4),
             new NtcpEvaluationContext
             {
+                DosePerFractionGy = 2.0,
+                Fractions = 35
+            });
+
+        Assert.Equal(NtcpEvaluationStatus.Calculated, result.Status);
+        Assert.Equal(0.5, result.Probability!.Value, precision: 12);
+        Assert.Equal(31.4, result.EffectiveDoseGy!.Value, precision: 12);
+        Assert.Equal(
+            "physical_mean_dose_source_convention",
+            result.AppliedDoseBasis);
+    }
+
+    [Fact]
+    public void SemenenkoAtHypofractionation_AppliesSourceSpecificMeanDoseEqd2()
+    {
+        var model = LoadModel("semenenko_li_2008_xerostomia_lkb_6m");
+        var engine = new NtcpModelEngine();
+
+        // Mean parotid dose 20 Gy delivered over 5 fractions:
+        // EQD2 = 20 * (4 + 3) / (2 + 3) = 28 Gy.
+        var result = engine.Evaluate(
+            model,
+            UniformCumulativeDvh(20.0),
+            new NtcpEvaluationContext
+            {
+                DosePerFractionGy = 5.0,
+                Fractions = 5
+            });
+
+        double expectedEqd2 = 28.0;
+        double expected = LkbModel.CalculateNTCPFromEffectiveDose(
+            expectedEqd2,
+            td50: 31.4,
+            m: 0.53);
+
+        Assert.Equal(NtcpEvaluationStatus.Calculated, result.Status);
+        Assert.Equal(expected, result.Probability!.Value, precision: 12);
+        Assert.Equal(expectedEqd2, result.EffectiveDoseGy!.Value, precision: 12);
+        Assert.Equal("mean_dose_eqd2", result.AppliedDoseBasis);
+        Assert.Contains(
+            result.Warnings,
+            w => w.Contains("alpha/beta=3.00", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void SemenenkoHypofractionation_RequiresFractionCount()
+    {
+        var model = LoadModel("semenenko_li_2008_xerostomia_lkb_6m");
+        var engine = new NtcpModelEngine();
+
+        var result = engine.Evaluate(
+            model,
+            UniformCumulativeDvh(20.0),
+            new NtcpEvaluationContext
+            {
                 DosePerFractionGy = 5.0
             });
 
-        Assert.Equal(NtcpEvaluationStatus.NotApplicable, result.Status);
+        Assert.Equal(NtcpEvaluationStatus.MissingInputs, result.Status);
         Assert.Null(result.Probability);
-        Assert.Contains(
-            result.Warnings,
-            w => w.Contains("EQD2", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("fractions", result.MissingInputs);
     }
 
     [Fact]

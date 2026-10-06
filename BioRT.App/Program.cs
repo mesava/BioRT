@@ -287,6 +287,9 @@ internal class Program
         {
             DosePerFractionGy = plan.DosePerFraction > 0
                 ? plan.DosePerFraction
+                : null,
+            Fractions = plan.Fractions > 0
+                ? plan.Fractions
                 : null
         };
 
@@ -364,6 +367,15 @@ internal class Program
             (string.IsNullOrWhiteSpace(result.TimePoint)
                 ? ""
                 : $" | {result.TimePoint}"));
+
+        if (result.EffectiveDoseGy is double effectiveDose)
+        {
+            Console.WriteLine(
+                $"    Effective dose: {effectiveDose:F2} Gy" +
+                (string.IsNullOrWhiteSpace(result.AppliedDoseBasis)
+                    ? ""
+                    : $" | basis={result.AppliedDoseBasis}"));
+        }
 
         if (!string.IsNullOrWhiteSpace(result.Pmid))
             Console.WriteLine($"    Source: PMID {result.Pmid}");

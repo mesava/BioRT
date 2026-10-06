@@ -64,6 +64,8 @@ public sealed class NtcpModelLibrary
                 ReferenceFractionSizeGy = GetOptionalDouble(implNode, "reference_fraction_size_gy"),
                 RequiresEqd2WhenFractionSizeDiffers =
                     GetOptionalBoolean(implNode, "requires_eqd2_when_fraction_size_differs"),
+                FractionationTransform =
+                    GetOptionalString(implNode, "fractionation_transform"),
                 FractionationNote = GetOptionalString(implNode, "fractionation_note"),
                 RequiredPredictors = GetStringArray(implNode, "required_predictors"),
                 RequiredCategoricalPredictors =

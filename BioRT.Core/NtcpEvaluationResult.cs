@@ -17,6 +17,8 @@ public sealed class NtcpEvaluationResult
     public string? TimePoint { get; init; }
     public required NtcpEvaluationStatus Status { get; init; }
     public double? Probability { get; init; }
+    public double? EffectiveDoseGy { get; init; }
+    public string? AppliedDoseBasis { get; init; }
     public required string ParameterStatus { get; init; }
     public string? Pmid { get; init; }
     public string? Doi { get; init; }

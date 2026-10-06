@@ -43,6 +43,7 @@ public sealed class NtcpImplementationDefinition
     public string? RuntimeNote { get; init; }
     public double? ReferenceFractionSizeGy { get; init; }
     public bool RequiresEqd2WhenFractionSizeDiffers { get; init; }
+    public string? FractionationTransform { get; init; }
     public string? FractionationNote { get; init; }
 
     public IReadOnlyList<string> RequiredPredictors { get; init; } = Array.Empty<string>();
