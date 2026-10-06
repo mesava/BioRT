@@ -6,6 +6,10 @@ namespace BioRT.Core.Radiobiology;
 public sealed class NtcpModelEngine
 {
     private const double FractionSizeToleranceGy = 0.05;
+    private const string MeanDoseEqd2IfFractionDiffers =
+        "mean_dose_eqd2_if_prescription_fraction_differs";
+    private const string DvhBinEqd2 =
+        "dvh_bin_eqd2";
 
     public NtcpEvaluationResult Evaluate(
         NtcpModelDefinition model,
@@ -69,47 +73,6 @@ public sealed class NtcpModelEngine
                 missingInputs: new[] { "structure_dvh" });
         }
 
-        if (model.Implementation?.RequiresEqd2WhenFractionSizeDiffers == true &&
-            model.Implementation.ReferenceFractionSizeGy is double referenceFraction)
-        {
-            if (context.DosePerFractionGy is not double actualFraction)
-            {
-                warnings.Add(
-                    "Dose per fraction is required to verify compatibility with this parameter set.");
-
-                return Build(
-                    model,
-                    NtcpEvaluationStatus.MissingInputs,
-                    warnings: warnings,
-                    missingInputs: new[] { "dose_per_fraction_gy" });
-            }
-
-            if (Math.Abs(actualFraction - referenceFraction) > FractionSizeToleranceGy)
-            {
-                warnings.Add(
-                    $"Model was normalized to {referenceFraction:F2} Gy/fraction, " +
-                    $"but the current plan is {actualFraction:F2} Gy/fraction. " +
-                    "Model-specific EQD2 conversion is required and is not yet applied by the NTCP engine.");
-
-                return Build(
-                    model,
-                    NtcpEvaluationStatus.NotApplicable,
-                    warnings: warnings);
-            }
-        }
-
-        if (model.Implementation?.ReferenceFractionSizeGy is double refFx &&
-            context.DosePerFractionGy is double actualFx &&
-            Math.Abs(actualFx - refFx) > 0.25)
-        {
-            warnings.Add(
-                $"Current fraction size ({actualFx:F2} Gy) differs from the model's reference context " +
-                $"({refFx:F2} Gy). Result is an extrapolation unless the source explicitly supports this fractionation.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(model.Implementation?.FractionationNote))
-            warnings.Add(model.Implementation.FractionationNote!);
-
         var p = model.Parameters;
 
         if (!TryGetDouble(p, "td50_gy", out double td50) ||
@@ -123,13 +86,266 @@ public sealed class NtcpModelEngine
                     "LKB parameter set must contain td50_gy, m and n.").ToArray());
         }
 
-        double probability = LkbModel.CalculateNTCP(dvh, td50, m, n);
+        string? transform = model.Implementation?.FractionationTransform;
+
+        if (string.Equals(
+                transform,
+                MeanDoseEqd2IfFractionDiffers,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return EvaluateMeanDoseEqd2Model(
+                model,
+                dvh,
+                context,
+                td50,
+                m,
+                n,
+                warnings);
+        }
+
+        if (string.Equals(
+                transform,
+                DvhBinEqd2,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return EvaluateDvhBinEqd2Model(
+                model,
+                dvh,
+                context,
+                td50,
+                m,
+                n,
+                warnings);
+        }
+
+        // Backward-compatible safety gate for parameter sets that are known to
+        // require EQD2 but do not yet declare a machine-readable transform.
+        if (model.Implementation?.RequiresEqd2WhenFractionSizeDiffers == true &&
+            model.Implementation.ReferenceFractionSizeGy is double referenceFraction)
+        {
+            if (context.DosePerFractionGy is not double actualFraction)
+            {
+                warnings.Add(
+                    "Prescription dose per fraction is required to verify compatibility with this parameter set.");
+
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.MissingInputs,
+                    warnings: warnings,
+                    missingInputs: new[] { "dose_per_fraction_gy" });
+            }
+
+            if (Math.Abs(actualFraction - referenceFraction) > FractionSizeToleranceGy)
+            {
+                warnings.Add(
+                    $"Model was normalized to {referenceFraction:F2} Gy/fraction, " +
+                    $"but the current prescription context is {actualFraction:F2} Gy/fraction. " +
+                    "A model-specific fractionation transform is required but is not defined.");
+
+                return Build(
+                    model,
+                    NtcpEvaluationStatus.NotApplicable,
+                    warnings: warnings);
+            }
+        }
+
+        AddFractionationContextWarning(model, context, warnings);
+
+        double effectiveDose = LkbModel.CalculateGEUD(dvh, n);
+        double probability = LkbModel.CalculateNTCPFromEffectiveDose(
+            effectiveDose,
+            td50,
+            m);
 
         return Build(
             model,
             NtcpEvaluationStatus.Calculated,
             probability,
-            warnings);
+            effectiveDose,
+            appliedDoseBasis: "physical_dose",
+            warnings: warnings);
+    }
+
+    private static NtcpEvaluationResult EvaluateMeanDoseEqd2Model(
+        NtcpModelDefinition model,
+        StructureDVH dvh,
+        NtcpEvaluationContext context,
+        double td50,
+        double m,
+        double n,
+        List<string> warnings)
+    {
+        if (Math.Abs(n - 1.0) > 1e-12)
+        {
+            return Build(
+                model,
+                NtcpEvaluationStatus.Unsupported,
+                warnings: warnings.Append(
+                    "The mean-dose EQD2 transform is only valid in this implementation for n=1 mean-dose LKB models.")
+                    .ToArray());
+        }
+
+        double referenceFraction =
+            model.Implementation?.ReferenceFractionSizeGy ?? 2.0;
+
+        if (context.DosePerFractionGy is not double prescriptionFraction)
+        {
+            warnings.Add(
+                "Prescription dose per fraction is required to determine whether this source-specific EQD2 correction applies.");
+
+            return Build(
+                model,
+                NtcpEvaluationStatus.MissingInputs,
+                warnings: warnings,
+                missingInputs: new[] { "dose_per_fraction_gy" });
+        }
+
+        // Semenenko & Li 2008 corrected published mean-organ doses only when
+        // the daily treatment fraction differed from 2 Gy. We preserve that
+        // source-specific convention rather than silently applying per-bin EQD2.
+        if (Math.Abs(prescriptionFraction - referenceFraction) <=
+            FractionSizeToleranceGy)
+        {
+            double physicalMean = dvh.MeanDose;
+            double probability = LkbModel.CalculateNTCPFromEffectiveDose(
+                physicalMean,
+                td50,
+                m);
+
+            warnings.Add(
+                $"No EQD{referenceFraction:F0} correction applied because the prescription fraction size " +
+                $"({prescriptionFraction:F2} Gy) matches the model reference ({referenceFraction:F2} Gy) " +
+                "within tolerance.");
+
+            return Build(
+                model,
+                NtcpEvaluationStatus.Calculated,
+                probability,
+                physicalMean,
+                appliedDoseBasis: "physical_mean_dose_source_convention",
+                warnings: warnings);
+        }
+
+        if (context.Fractions is not int fractions || fractions <= 0)
+        {
+            warnings.Add(
+                "Number of fractions is required for LQ conversion of the mean organ dose.");
+
+            return Build(
+                model,
+                NtcpEvaluationStatus.MissingInputs,
+                warnings: warnings,
+                missingInputs: new[] { "fractions" });
+        }
+
+        if (!TryGetDouble(
+                model.DoseBasis,
+                "alpha_beta_gy",
+                out double alphaBeta))
+        {
+            return Build(
+                model,
+                NtcpEvaluationStatus.Unsupported,
+                warnings: warnings.Append(
+                    "Fractionation-corrected model does not define alpha_beta_gy in dose_basis.")
+                    .ToArray());
+        }
+
+        double correctedMean =
+            FractionationCorrector.CalculateEquivalentDose(
+                dvh.MeanDose,
+                fractions,
+                alphaBeta,
+                referenceFraction);
+
+        double correctedProbability =
+            LkbModel.CalculateNTCPFromEffectiveDose(
+                correctedMean,
+                td50,
+                m);
+
+        warnings.Add(
+            $"Applied source-specific mean-dose EQD{referenceFraction:F0} correction: " +
+            $"N={fractions}, alpha/beta={alphaBeta:F2} Gy, " +
+            $"physical Dmean={dvh.MeanDose:F2} Gy -> EQD{referenceFraction:F0}={correctedMean:F2} Gy.");
+
+        warnings.Add(
+            "LQ conversion assumes the evaluated total dose belongs to one equal-fraction course. " +
+            "Composite doses from phases with different fractionation schedules require phase-specific correction.");
+
+        return Build(
+            model,
+            NtcpEvaluationStatus.Calculated,
+            correctedProbability,
+            correctedMean,
+            appliedDoseBasis: $"mean_dose_eqd{referenceFraction:F0}",
+            warnings: warnings);
+    }
+
+    private static NtcpEvaluationResult EvaluateDvhBinEqd2Model(
+        NtcpModelDefinition model,
+        StructureDVH dvh,
+        NtcpEvaluationContext context,
+        double td50,
+        double m,
+        double n,
+        List<string> warnings)
+    {
+        if (context.Fractions is not int fractions || fractions <= 0)
+        {
+            return Build(
+                model,
+                NtcpEvaluationStatus.MissingInputs,
+                warnings: warnings.Append(
+                    "Number of fractions is required for per-bin LQ DVH correction.")
+                    .ToArray(),
+                missingInputs: new[] { "fractions" });
+        }
+
+        if (!TryGetDouble(
+                model.DoseBasis,
+                "alpha_beta_gy",
+                out double alphaBeta))
+        {
+            return Build(
+                model,
+                NtcpEvaluationStatus.Unsupported,
+                warnings: warnings.Append(
+                    "Per-bin fractionation-corrected model does not define alpha_beta_gy in dose_basis.")
+                    .ToArray());
+        }
+
+        double referenceFraction =
+            model.Implementation?.ReferenceFractionSizeGy ?? 2.0;
+
+        StructureDVH corrected =
+            FractionationCorrector.ConvertCumulativeDvhToEquivalentDose(
+                dvh,
+                fractions,
+                alphaBeta,
+                referenceFraction);
+
+        double effectiveDose = LkbModel.CalculateGEUD(corrected, n);
+        double probability = LkbModel.CalculateNTCPFromEffectiveDose(
+            effectiveDose,
+            td50,
+            m);
+
+        warnings.Add(
+            $"Applied per-bin LQ EQD{referenceFraction:F0} conversion: " +
+            $"N={fractions}, alpha/beta={alphaBeta:F2} Gy.");
+
+        warnings.Add(
+            "Per-bin LQ conversion assumes the same spatial dose pattern is delivered in every fraction. " +
+            "Composite doses from different fractionation phases require phase-specific biological summation.");
+
+        return Build(
+            model,
+            NtcpEvaluationStatus.Calculated,
+            probability,
+            effectiveDose,
+            appliedDoseBasis: $"dvh_bin_eqd{referenceFraction:F0}",
+            warnings: warnings);
     }
 
     private static NtcpEvaluationResult EvaluateLogistic(
@@ -230,7 +446,26 @@ public sealed class NtcpModelEngine
             model,
             NtcpEvaluationStatus.Calculated,
             probability,
-            warnings);
+            warnings: warnings);
+    }
+
+    private static void AddFractionationContextWarning(
+        NtcpModelDefinition model,
+        NtcpEvaluationContext context,
+        List<string> warnings)
+    {
+        if (model.Implementation?.ReferenceFractionSizeGy is double refFx &&
+            context.DosePerFractionGy is double actualFx &&
+            Math.Abs(actualFx - refFx) > 0.25)
+        {
+            warnings.Add(
+                $"Prescription fraction size ({actualFx:F2} Gy) differs from the model reference context " +
+                $"({refFx:F2} Gy). No source-specific fractionation transform is defined for this model; " +
+                "the result should be treated as an extrapolation.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.Implementation?.FractionationNote))
+            warnings.Add(model.Implementation.FractionationNote!);
     }
 
     private static List<string> BuildCommonWarnings(NtcpModelDefinition model)
@@ -259,6 +494,8 @@ public sealed class NtcpModelEngine
         NtcpModelDefinition model,
         NtcpEvaluationStatus status,
         double? probability = null,
+        double? effectiveDoseGy = null,
+        string? appliedDoseBasis = null,
         IReadOnlyList<string>? warnings = null,
         IReadOnlyList<string>? missingInputs = null)
     {
@@ -270,6 +507,8 @@ public sealed class NtcpModelEngine
             TimePoint = model.Endpoint.TimePoint,
             Status = status,
             Probability = probability,
+            EffectiveDoseGy = effectiveDoseGy,
+            AppliedDoseBasis = appliedDoseBasis,
             ParameterStatus = model.Status,
             Pmid = model.Source.Pmid,
             Doi = model.Source.Doi,
@@ -278,9 +517,14 @@ public sealed class NtcpModelEngine
         };
     }
 
-    private static bool TryGetDouble(JsonElement node, string name, out double value)
+    private static bool TryGetDouble(
+        JsonElement node,
+        string name,
+        out double value)
     {
-        if (node.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.Number)
+        if (node.ValueKind == JsonValueKind.Object &&
+            node.TryGetProperty(name, out var p) &&
+            p.ValueKind == JsonValueKind.Number)
         {
             value = p.GetDouble();
             return true;
