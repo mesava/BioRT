@@ -294,7 +294,7 @@ internal class Program
         };
 
         Console.WriteLine();
-        Console.WriteLine("NTCP xerostomia — provenance-aware LKB models:");
+        Console.WriteLine("NTCP — provenance-aware LKB models:");
         Console.WriteLine(
             $"Plan fractionation context: N={plan.Fractions}, " +
             $"nominal target dose/fx={(plan.DosePerFraction > 0 ? $"{plan.DosePerFraction:F3} Gy" : "unknown")}");
@@ -303,13 +303,8 @@ internal class Program
         {
             string? canonical = matcher.Match(dvh.Name);
 
-            if (!string.Equals(
-                    canonical,
-                    "parotid_gland",
-                    StringComparison.OrdinalIgnoreCase))
-            {
+            if (canonical == null)
                 continue;
-            }
 
             var models = ntcpSelector.Select(new NtcpModelQuery
             {
@@ -321,7 +316,7 @@ internal class Program
                 continue;
 
             Console.WriteLine();
-            Console.WriteLine($"{dvh.Name}  Dmean={dvh.MeanDose:F2} Gy");
+            Console.WriteLine($"{dvh.Name} -> {canonical}  Dmean={dvh.MeanDose:F2} Gy  Dmax={dvh.MaxDose:F2} Gy");
 
             foreach (var model in models)
             {
@@ -335,7 +330,42 @@ internal class Program
         }
 
         Console.WriteLine();
-        Console.WriteLine("Additional xerostomia models requiring clinical/model-specific inputs:");
+        Console.WriteLine("Reference-only NTCP evidence/models stored for matched structures:");
+
+        foreach (var dvh in plan.DVHs.Values.Where(d => !ptvRx.ContainsKey(d.Name)))
+        {
+            string? canonical = matcher.Match(dvh.Name);
+            if (canonical == null)
+                continue;
+
+            var referenceModels = ntcpSelector
+                .Select(new NtcpModelQuery
+                {
+                    CanonicalStructure = canonical,
+                    IncludeRuntimeDisabled = true
+                })
+                .Where(m => m.Implementation?.RuntimeEnabled != true)
+                .ToArray();
+
+            if (referenceModels.Length == 0)
+                continue;
+
+            Console.WriteLine();
+            Console.WriteLine($"{dvh.Name} -> {canonical}");
+
+            foreach (var model in referenceModels)
+            {
+                var result = ntcpEngine.Evaluate(
+                    model,
+                    dvh,
+                    ntcpContext);
+
+                PrintNtcpResult(result);
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("Additional NTCP models requiring clinical/model-specific inputs:");
 
         foreach (var model in ntcpSelector.Select(new NtcpModelQuery
                  {
