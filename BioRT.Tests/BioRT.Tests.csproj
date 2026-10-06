@@ -20,4 +20,10 @@
     <ProjectReference Include="..\BioRT.Core\BioRT.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\BioRT.App\data\ntcp_parameters_v2.json" Link="data\ntcp_parameters_v2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
