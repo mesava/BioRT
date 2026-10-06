@@ -1,0 +1,411 @@
+{
+  "metadata": {
+    "schema_version": "0.1.0",
+    "library_version": "2026.10-parotid-v1",
+    "status": "research_validation",
+    "scope": "First provenance-aware NTCP/xerostomia library for BioRT",
+    "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its endpoint, time point, structure definition, dose basis and treatment context without explicit review/recalibration.",
+    "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed."
+  },
+  "equations": {
+    "lkb_probit": {
+      "deff": "Deff = (sum_i(v_i * D_i^(1/n)))^n",
+      "t": "t = (Deff - TD50) / (m * TD50)",
+      "ntcp": "NTCP = Phi(t)",
+      "notes": "v_i are differential fractional organ volumes. If n=1, Deff reduces to mean dose."
+    },
+    "logistic": {
+      "ntcp": "NTCP = 1 / (1 + exp(-S))",
+      "linear_predictor": "S = beta0 + sum_i(beta_i * X_i)"
+    }
+  },
+  "xerostomia_models": [
+    {
+      "id": "eisbruch_1999_parotid_lkb",
+      "model_family": "LKB",
+      "equation_id": "lkb_probit",
+      "structure_definition": "individual parotid gland",
+      "endpoint": {
+        "name": "parotid salivary dysfunction / xerostomia",
+        "measurement": "stimulated parotid salivary flow",
+        "time_point": "post-radiotherapy longitudinal assessment",
+        "definition_complete_from_accessible_source": false
+      },
+      "parameters": {
+        "td50_gy": 28.4,
+        "m": 0.18,
+        "n": 1.0
+      },
+      "dose_basis": {
+        "metric": "parotid dose-volume distribution",
+        "fractionation_correction": "not specified in accessible abstract"
+      },
+      "cohort": {
+        "disease": "head and neck cancer",
+        "technique": "conformal and intensity-modulated radiotherapy"
+      },
+      "source": {
+        "citation": "Eisbruch A et al. Dose, volume, and function relationships in parotid salivary glands following conformal and intensity-modulated irradiation of head and neck cancer. IJROBP. 1999.",
+        "pmid": "10524409",
+        "doi": "10.1016/S0360-3016(99)00247-3"
+      },
+      "status": "legacy_reference",
+      "implementation_notes": "Useful as a historical LKB benchmark. Endpoint/time-point definition must be reviewed from full text before clinical promotion."
+    },
+    {
+      "id": "semenenko_li_2008_xerostomia_lkb_6m",
+      "model_family": "LKB",
+      "equation_id": "lkb_probit",
+      "structure_definition": "parotid gland; mean-organ-dose formulation with n fixed to 1",
+      "endpoint": {
+        "name": "xerostomia",
+        "measurement": "stimulated salivary flow",
+        "definition": "stimulated salivary flow below 25% of pretreatment",
+        "time_point": "within 6 months after radiotherapy"
+      },
+      "parameters": {
+        "td50_gy": 31.4,
+        "td50_ci95_gy": [29.1, 34.0],
+        "m": 0.53,
+        "m_ci95": [0.45, 0.65],
+        "n": 1.0,
+        "n_fitting": "fixed"
+      },
+      "dose_basis": {
+        "metric": "mean parotid dose",
+        "fractionation_correction": "For source datasets using fraction sizes other than 2 Gy, mean organ doses were converted to 2-Gy-fraction equivalent dose.",
+        "alpha_beta_gy": 3.0
+      },
+      "cohort": {
+        "type": "combined analysis of published multi-institutional clinical datasets"
+      },
+      "source": {
+        "citation": "Semenenko VA, Li XA. Lyman-Kutcher-Burman NTCP model parameters for radiation pneumonitis and xerostomia based on combined analysis of published clinical data. Phys Med Biol. 2008.",
+        "pmid": "18199912",
+        "doi": "10.1088/0031-9155/53/3/014"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Strong transparent classical reference. BioRT must apply the same fractionation convention if this parameter set is used."
+    },
+    {
+      "id": "dijkema_2010_parotid_flow_lkb_12m",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "individual parotid gland",
+      "endpoint": {
+        "name": "parotid gland functional complication",
+        "measurement": "stimulated individual parotid flow using Lashley cups",
+        "definition": "flow ratio below 25% of pretreatment",
+        "time_point": "1 year after radiotherapy"
+      },
+      "parameters": {
+        "td50_gy": 39.9,
+        "m": 0.40,
+        "n": 1.0,
+        "n_provenance": "mean-dose LKB formulation; n=1 is the equivalent LKB volume-effect assumption"
+      },
+      "dose_basis": {
+        "metric": "mean dose to individual parotid gland",
+        "fractionation_correction": "not reported in accessible abstract"
+      },
+      "cohort": {
+        "patients": 222,
+        "parotid_glands": 384,
+        "centres": ["University of Michigan", "University Medical Center Utrecht"],
+        "disease": "various head and neck malignancies",
+        "technique": "conventional radiotherapy and IMRT"
+      },
+      "source": {
+        "citation": "Dijkema T et al. Parotid gland function after radiotherapy: the combined Michigan and Utrecht experience. IJROBP. 2010.",
+        "pmid": "20056347",
+        "doi": "10.1016/j.ijrobp.2009.07.1708"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Endpoint is objective gland function at 1 year, not patient-rated xerostomia."
+    },
+    {
+      "id": "miah_2013_parsport_parotid_lkb",
+      "model_family": "LKB",
+      "equation_id": "lkb_probit",
+      "structure_definition": "parotid gland",
+      "endpoint": {
+        "name": "parotid salivary flow recovery / xerostomia",
+        "measurement": "parotid saliva flow rate in PARSPORT",
+        "time_point": "post-radiotherapy recovery analysis"
+      },
+      "parameters": {
+        "td50_gy": 26.3,
+        "td50_ci95_gy": [24.0, 30.1],
+        "m": 0.25,
+        "n": 1.0
+      },
+      "dose_basis": {
+        "metric": "parotid mean dose"
+      },
+      "cohort": {
+        "patients": 63,
+        "trial": "PARSPORT phase III",
+        "disease": "locally advanced head and neck squamous cell carcinoma",
+        "technique": "conventional RT and IMRT"
+      },
+      "source": {
+        "citation": "Miah AB et al. Dose-response analysis of parotid gland function: what is the best measure of xerostomia? Radiother Oncol. 2013.",
+        "pmid": "23566529",
+        "doi": "10.1016/j.radonc.2013.03.009"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "The accessible abstract has a malformed/truncated confidence interval for m; the point estimate is retained but the m confidence interval is intentionally omitted pending full-text verification."
+    },
+    {
+      "id": "lee_fang_2013_qol_lkb_3m",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "spared parotid gland",
+      "endpoint": {
+        "name": "moderate-to-severe xerostomia",
+        "measurement": "EORTC QLQ-H&N35 quality-of-life questionnaire",
+        "definition": "grade 3+ xerostomia as defined by study",
+        "time_point": "3 months after radiotherapy"
+      },
+      "parameters": {
+        "td50_gy": 37.8,
+        "td50_ci95_gy": [29.1, 46.9],
+        "m": 0.59,
+        "m_ci95": [0.48, 0.80],
+        "n": 1.0,
+        "n_provenance": "mean-dose/spared-gland implementation; retain as an explicit assumption until full-text equation verification"
+      },
+      "cohort": {
+        "npc_patients": 95,
+        "hnscc_patients": 142
+      },
+      "source": {
+        "citation": "Lee TF, Fang FM. QUANTEC guideline validation using quality-of-life questionnaire datasets for parotid gland constraints. Radiother Oncol. 2013.",
+        "pmid": "23333019",
+        "doi": "10.1016/j.radonc.2012.11.013"
+      },
+      "status": "literature_reference_only",
+      "implementation_notes": "Do not merge with the 12-month fit. Time point is part of the model identity."
+    },
+    {
+      "id": "lee_fang_2013_qol_lkb_12m",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "spared parotid gland",
+      "endpoint": {
+        "name": "moderate-to-severe xerostomia",
+        "measurement": "EORTC QLQ-H&N35 quality-of-life questionnaire",
+        "definition": "grade 3+ xerostomia as defined by study",
+        "time_point": "12 months after radiotherapy"
+      },
+      "parameters": {
+        "td50_gy": 43.9,
+        "td50_ci95_gy": [33.2, 52.8],
+        "m": 0.48,
+        "m_ci95": [0.37, 0.76],
+        "n": 1.0,
+        "n_provenance": "mean-dose/spared-gland implementation; retain as an explicit assumption until full-text equation verification"
+      },
+      "cohort": {
+        "npc_patients": 95,
+        "hnscc_patients": 142
+      },
+      "source": {
+        "citation": "Lee TF, Fang FM. QUANTEC guideline validation using quality-of-life questionnaire datasets for parotid gland constraints. Radiother Oncol. 2013.",
+        "pmid": "23333019",
+        "doi": "10.1016/j.radonc.2012.11.013"
+      },
+      "status": "literature_reference_only",
+      "implementation_notes": "Do not merge with the 3-month fit. Time point is part of the model identity."
+    },
+    {
+      "id": "mavroidis_2017_hpv_opc_lkb_12m",
+      "model_family": "LKB",
+      "equation_id": "lkb_probit",
+      "structure_definition": "combined contralateral salivary glands: contralateral parotid + contralateral submandibular gland",
+      "endpoint": {
+        "name": "patient-reported xerostomia",
+        "measurement": "PRO-CTCAE",
+        "definition": "increase in severity from baseline of at least 2",
+        "time_point": "12 months after chemoradiotherapy"
+      },
+      "parameters": {
+        "td50_gy": 26.9,
+        "m": 0.63,
+        "n": 1.0
+      },
+      "dose_basis": {
+        "metric": "dose-volume metrics of combined contralateral salivary glands"
+      },
+      "cohort": {
+        "patients": 43,
+        "trial_type": "prospective multi-institutional phase II",
+        "disease": "favorable-risk HPV-associated oropharyngeal squamous cell carcinoma",
+        "treatment": "60 Gy IMRT with concurrent weekly cisplatin"
+      },
+      "source": {
+        "citation": "Mavroidis P et al. Dose-volume toxicity modeling for de-intensified chemo-radiation therapy for HPV-positive oropharynx cancer. Radiother Oncol. 2017.",
+        "pmid": "28712533",
+        "doi": "10.1016/j.radonc.2017.06.020"
+      },
+      "status": "context_specific_reference",
+      "implementation_notes": "Do not generalize automatically to standard-dose heterogeneous HNC populations."
+    },
+    {
+      "id": "beetz_2012_patient_rated_xerostomia_logistic_6m",
+      "model_family": "multivariable_logistic",
+      "equation_id": "logistic",
+      "structure_definition": "contralateral parotid gland",
+      "endpoint": {
+        "name": "patient-rated xerostomia",
+        "measurement": "EORTC QLQ-H&N35",
+        "time_point": "6 months after IMRT"
+      },
+      "parameters": {
+        "intercept": -1.443,
+        "predictors": [
+          {
+            "name": "contralateral_parotid_mean_dose_gy",
+            "coefficient": 0.047
+          },
+          {
+            "name": "baseline_xerostomia_a_bit",
+            "coefficient": 0.720,
+            "coding": "0 = none; 1 = a bit"
+          }
+        ]
+      },
+      "cohort": {
+        "patients": 178,
+        "technique": "IMRT",
+        "endpoint_prevalence_percent": 51.6,
+        "auc": 0.68,
+        "auc_ci95": [0.60, 0.76]
+      },
+      "source": {
+        "citation": "Beetz I et al. NTCP models for patient-rated xerostomia and sticky saliva after treatment with IMRT for head and neck cancer. Radiother Oncol. 2012.",
+        "pmid": "22516776",
+        "doi": "10.1016/j.radonc.2012.03.004"
+      },
+      "status": "externally_tested_reference",
+      "implementation_notes": "Transparent logistic comparator to LKB. Baseline symptom coding is mandatory."
+    },
+    {
+      "id": "lipp_v2_2_xerostomia_logistic_6m",
+      "model_family": "multivariable_logistic",
+      "equation_id": "logistic",
+      "structure_definition": "left and right parotid glands plus combined submandibular glands",
+      "endpoint": {
+        "name": "grade 2 or higher xerostomia",
+        "measurement": "EORTC QLQ-H&N35-derived endpoint in the LIPP development/validation framework",
+        "time_point": "6 months after radiotherapy"
+      },
+      "parameters": {
+        "intercept": -2.295,
+        "predictors": [
+          {
+            "name": "sqrt_left_parotid_mean_dose_plus_sqrt_right_parotid_mean_dose",
+            "coefficient": 0.0996,
+            "formula": "sqrt(Dmean_left_parotid_Gy) + sqrt(Dmean_right_parotid_Gy)"
+          },
+          {
+            "name": "combined_submandibular_mean_dose_gy",
+            "coefficient": 0.0182
+          },
+          {
+            "name": "baseline_xerostomia",
+            "coding": {
+              "none": 0.0,
+              "mild": 0.459,
+              "moderate_to_severe": 1.207
+            }
+          }
+        ]
+      },
+      "cohort": {
+        "development_update_patients": 1145,
+        "development_endpoint_prevalence_percent": 46.0,
+        "external_validation_patients": 674,
+        "external_validation_events": 204
+      },
+      "validation": {
+        "external_validation_year": 2025,
+        "calibration_slope_before_recalibration": 1.16,
+        "calibration_intercept_before_recalibration": -0.12,
+        "recalibration_required": true,
+        "auc_after_recalibration": 0.62
+      },
+      "source": {
+        "citation": "Dalqvist E et al. Validated prediction of xerostomia in a real-world population: a step toward model-guided radiotherapy. Acta Oncol. 2025.",
+        "pmid": "40823804",
+        "doi": "10.2340/1651-226X.2025.43462",
+        "model_name": "LIPP version 2.2"
+      },
+      "status": "externally_validated_reference_candidate",
+      "implementation_notes": "This is a modern decision-support model, not an LKB parameter set. Local calibration must be checked before interpreting absolute risk."
+    }
+  ],
+  "evidence_only": [
+    {
+      "id": "onjukka_2020_registry",
+      "topic": "late xerostomia registry modeling",
+      "key_findings": "753 patients; grade >=2 and grade >=3 endpoints; Cox models using total or contralateral parotid mean dose plus clinical factors; risks estimated at 9, 12 and 24 months.",
+      "source": {
+        "pmid": "32923404",
+        "doi": "10.3389/fonc.2020.01647"
+      },
+      "reason_not_computable_here": "Multiple Cox models and nomograms; exact model choice and coefficient set require endpoint-specific extraction from tables/supplement before implementation."
+    },
+    {
+      "id": "mavroidis_2023_pro_ctcae_ctcae",
+      "topic": "time-point and scoring-system dependence",
+      "key_findings": "231 favorable-risk HPV-associated oropharyngeal cancer patients treated with 60 Gy IMRT; xerostomia modeled at 6, 12, 18 and 24 months using PRO-CTCAE and CTCAE; model results depend on scoring system, gland grouping and time point.",
+      "source": {
+        "pmid": "37989042",
+        "doi": "10.1016/j.ejmp.2023.103169"
+      },
+      "reason_not_computable_here": "Accessible abstract does not expose the complete parameter table for every model/time point."
+    },
+    {
+      "id": "van_rijn_dekker_2023_regeneration_weighted_dose",
+      "topic": "spatial parotid radiosensitivity / regeneration-weighted dose",
+      "key_findings": "Introduces a regeneration-weighted parotid dose and validates multivariable xerostomia models in 350 patients; supports future spatial-model branch.",
+      "source": {
+        "pmid": "37150262",
+        "doi": "10.1016/j.ijrobp.2023.04.034"
+      },
+      "reason_not_computable_here": "Requires sub-parotid stem-cell-region segmentation and model-specific spatial dose metric not yet available in BioRT."
+    },
+    {
+      "id": "chu_2025_3d_dl_xerostomia",
+      "topic": "3D deep-learning NTCP",
+      "key_findings": "1208 patients from two institutions; moderate-to-severe xerostomia at 12 months; external validation highlights limited transportability and need for multicenter training/transfer learning.",
+      "source": {
+        "pmid": "39147208",
+        "doi": "10.1016/j.ijrobp.2024.07.2334"
+      },
+      "reason_not_computable_here": "Deep-learning model requires trained weights and multimodal 3D inputs; not a transparent coefficient model."
+    },
+    {
+      "id": "systematic_review_2026_xerostomia_dose_volume",
+      "topic": "contemporary dose-volume predictors",
+      "key_findings": "Systematic review of studies from 2013-2025; 51 studies and 10,789 patients. Contralateral parotid mean dose remains the most consistently validated predictor; submandibular glands, oral cavity and parotid substructures provide additional information.",
+      "source": {
+        "pmid": "42751136"
+      },
+      "reason_not_computable_here": "Evidence synthesis, not a single parameterized prediction model."
+    }
+  ],
+  "deprecated_or_invalid_composites": [
+    {
+      "id": "legacy_parotid_40_8_0_54",
+      "legacy_location": "BioRT.App/data/tcp_ntcp_params.json -> ntcp_parameters.parotid_gland.ntcp_xerostomia",
+      "legacy_values": {
+        "td50_gy": 40.8,
+        "m": 0.54
+      },
+      "reason": "Not traceable as a published indivisible parameter set. Numerically it matches approximately the arithmetic means of the separate 3-month and 12-month Lee/Fang 2013 fits (37.8/43.9 Gy and 0.59/0.48). Time-point-specific model parameters must not be averaged.",
+      "replacement": "Select an explicit endpoint/time-point/model record from xerostomia_models."
+    }
+  ]
+}
