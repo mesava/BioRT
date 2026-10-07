@@ -39,18 +39,42 @@ public sealed class DicomBundleImporter
 
             try
             {
-                await using Stream stream =
+                string sop;
+
+                // First pass: metadata only. This prevents a browser import of a
+                // whole patient folder from eagerly loading CT pixel data that
+                // BioRT does not need.
+                await using (Stream metadataStream =
+                    await input.OpenReadAsync(cancellationToken))
+                {
+                    DicomFile metadata =
+                        await DicomFile.OpenAsync(
+                            metadataStream,
+                            FileReadOption.SkipLargeTags);
+
+                    sop =
+                        metadata.Dataset.GetSingleValueOrDefault(
+                            DicomTag.SOPClassUID,
+                            "");
+                }
+
+                bool isSupportedRtObject =
+                    sop == DicomUID.RTPlanStorage.UID ||
+                    sop == DicomUID.RTDoseStorage.UID ||
+                    sop == DicomUID.RTStructureSetStorage.UID;
+
+                if (!isSupportedRtObject)
+                    continue;
+
+                // Second pass: fully materialize the selected RT object so the
+                // originating browser/file stream can be disposed safely.
+                await using Stream fullStream =
                     await input.OpenReadAsync(cancellationToken);
 
                 DicomFile dicom =
                     await DicomFile.OpenAsync(
-                        stream,
+                        fullStream,
                         FileReadOption.ReadAll);
-
-                string sop =
-                    dicom.Dataset.GetSingleValueOrDefault(
-                        DicomTag.SOPClassUID,
-                        "");
 
                 if (sop == DicomUID.RTPlanStorage.UID)
                 {
