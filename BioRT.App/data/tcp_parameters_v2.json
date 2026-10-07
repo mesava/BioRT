@@ -1,0 +1,414 @@
+{
+  "metadata": {
+    "schema_version": "0.1.0",
+    "library_version": "2026.10-prostate-hn-v1",
+    "status": "research_validation",
+    "scope": "Provenance-aware TCP parameter library for BioRT. Initial records cover prostate EBRT/SBRT and recurrent previously irradiated head-and-neck SBRT.",
+    "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its exact endpoint, target/dose descriptor, disease context, time point and fractionation domain.",
+    "selection_principle": "Each parameter set is an indivisible source-specific record. D50, gamma, alpha/beta and other parameters from different studies or model families must not be mixed.",
+    "target_rule": "An anatomical PTV name alone is insufficient to select a TCP model. Diagnosis, treatment setting, endpoint and target/dose definition must be explicit."
+  },
+  "equations": {
+    "linear_poisson_eqd2_dvh": {
+      "summary": "Per-bin EQD2 followed by the TG-166 linear-Poisson local-control product over differential target DVH bins.",
+      "source_framework": "AAPM TG-166 Eq. 5 and Eq. 9"
+    },
+    "poisson_power2_eqd2_prescription": {
+      "summary": "TCP = 2^(-exp(e*gamma*(1-EQD2/D50))) using prescription EQD2.",
+      "source_framework": "Royce et al. prostate SBRT TCP model"
+    },
+    "logistic_equivalent_fraction_count_dose": {
+      "summary": "Scalar logistic dose-response after LQ conversion of prescription dose to the source model's reference fraction count.",
+      "source_framework": "Vargo et al. recurrent head-and-neck SBRT pooled dose-response"
+    }
+  },
+  "prostate_models": [
+    {
+      "id": "sachpazidis_2020_prostate_gland_lq_poisson_mixed_followup",
+      "model_family": "linear_quadratic_poisson_dvh",
+      "equation_id": "linear_poisson_eqd2_dvh",
+      "disease": {
+        "diagnosis": "prostate_cancer",
+        "setting": "definitive_ebrt"
+      },
+      "target": {
+        "canonical_structure": "prostate_gland",
+        "description": "CT-defined prostate gland used as the response-defining target; mpMRI-GTV was analyzed separately but fit less well.",
+        "source_dose_descriptor": "individual planned prostate-gland DVH"
+      },
+      "endpoint": {
+        "name": "biochemical relapse-free survival",
+        "definition": "Phoenix definition after definitive EBRT with or without androgen deprivation therapy",
+        "time_point": "mixed follow-up; median 81.4 months, range 42-149 months"
+      },
+      "parameters": {
+        "d50_gy": 66.8,
+        "d50_ci95_gy": [
+          64.6,
+          69
+        ],
+        "gamma": 3.8,
+        "gamma_ci95": [
+          2.6,
+          5.2
+        ],
+        "alpha_beta_gy": 1.3
+      },
+      "dose_basis": {
+        "metric": "individual prostate-gland DVH converted per bin to EQD2 before linear-quadratic Poisson TCP aggregation",
+        "source_fractionation": {
+          "median_fractions": 38,
+          "range_fractions": [
+            28,
+            42
+          ],
+          "median_dose_per_fraction_gy": 2,
+          "range_dose_per_fraction_gy": [
+            1.7,
+            2.7
+          ]
+        }
+      },
+      "cohort": {
+        "patients": 129,
+        "biochemical_relapses": 26,
+        "risk_group": "intermediate and high risk",
+        "nodal_metastatic_status": "cN0 cM0",
+        "technique": "32% 3D-CRT; 68% IMRT/VMAT with IGRT",
+        "planned_prescription_dose_range_gy": [
+          66,
+          78
+        ]
+      },
+      "source": {
+        "citation": "Sachpazidis I, Mavroidis P, Zamboglou C, Klein CM, Grosu AL, Baltas D. Prostate cancer tumour control probability modelling for external beam radiotherapy based on multi-parametric MRI-GTV definition. Radiat Oncol. 2020;15:242.",
+        "pmid": "33081804",
+        "doi": "10.1186/s13014-020-01683-4"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Source-specific DVH model for localized intermediate/high-risk prostate cancer. Do not substitute a generic PTV DVH for the CT-defined prostate-gland target. The source cohort contained both intermediate- and high-risk patients, but the TCP fit was not stratified into separate risk-group parameter sets.",
+      "implementation": {
+        "input_mode": "target_dvh",
+        "runtime_enabled": true,
+        "minimum_fractions": 28,
+        "maximum_fractions": 42,
+        "minimum_prescription_fraction_size_gy": 1.7,
+        "maximum_prescription_fraction_size_gy": 2.7,
+        "required_context_fields": [
+          "diagnosis",
+          "setting"
+        ]
+      }
+    },
+    {
+      "id": "sachpazidis_2020_prostate_gland_lq_poisson_5y",
+      "model_family": "linear_quadratic_poisson_dvh",
+      "equation_id": "linear_poisson_eqd2_dvh",
+      "disease": {
+        "diagnosis": "prostate_cancer",
+        "setting": "definitive_ebrt"
+      },
+      "target": {
+        "canonical_structure": "prostate_gland",
+        "description": "CT-defined prostate gland",
+        "source_dose_descriptor": "individual planned prostate-gland DVH"
+      },
+      "endpoint": {
+        "name": "5-year biochemical relapse-free survival",
+        "definition": "Phoenix biochemical relapse definition",
+        "time_point": "5 years"
+      },
+      "parameters": {
+        "d50_gy": 64.6,
+        "d50_ci95_gy": [
+          61.6,
+          67.4
+        ],
+        "gamma": 3.1,
+        "gamma_ci95": [
+          2,
+          4.4
+        ],
+        "alpha_beta_gy": 2.2,
+        "alpha_beta_ci95_note": "undefined in the source fit"
+      },
+      "dose_basis": {
+        "metric": "individual prostate-gland DVH converted per bin to EQD2"
+      },
+      "cohort": {
+        "patients": 108,
+        "biochemical_relapses": 19,
+        "risk_group": "intermediate and high risk"
+      },
+      "source": {
+        "citation": "Sachpazidis I et al. Prostate cancer tumour control probability modelling for external beam radiotherapy based on multi-parametric MRI-GTV definition. Radiat Oncol. 2020;15:242.",
+        "pmid": "33081804",
+        "doi": "10.1186/s13014-020-01683-4"
+      },
+      "status": "context_specific_reference",
+      "implementation_notes": "Five-year refit from the same cohort. The fitted alpha/beta confidence interval was undefined, so absolute-risk interpretation requires caution. The source cohort contained both intermediate- and high-risk patients, but the TCP fit was not stratified into separate risk-group parameter sets.",
+      "implementation": {
+        "input_mode": "target_dvh",
+        "runtime_enabled": true,
+        "minimum_fractions": 28,
+        "maximum_fractions": 42,
+        "minimum_prescription_fraction_size_gy": 1.7,
+        "maximum_prescription_fraction_size_gy": 2.7,
+        "required_context_fields": [
+          "diagnosis",
+          "setting"
+        ]
+      }
+    },
+    {
+      "id": "royce_2021_prostate_sbrt_ffbr_5y_low_intermediate",
+      "model_family": "poisson_prescription_eqd2",
+      "equation_id": "poisson_power2_eqd2_prescription",
+      "disease": {
+        "diagnosis": "prostate_cancer",
+        "setting": "definitive_sbrt",
+        "risk_group": "low_intermediate"
+      },
+      "target": {
+        "canonical_structure": "prescription_course",
+        "description": "Pooled prostate SBRT prescription dose; patient-level DVHs were unavailable.",
+        "source_dose_descriptor": "prescription dose converted to EQD2"
+      },
+      "endpoint": {
+        "name": "freedom from biochemical relapse",
+        "definition": "pooled 5-year FFBR for low/intermediate-risk localized prostate cancer",
+        "time_point": "5 years"
+      },
+      "parameters": {
+        "d50_gy": 20.6,
+        "d50_ci95_gy": [
+          18.9,
+          22.3
+        ],
+        "gamma": 0.15,
+        "gamma_ci95": [
+          0.13,
+          0.17
+        ],
+        "alpha_beta_gy": 1.5
+      },
+      "dose_basis": {
+        "metric": "prescription dose converted to EQD2 using alpha/beta=1.5 Gy",
+        "source_fractionation": "32-50 Gy in 4-5 fractions",
+        "source_data_limit": "reviewed cohorts did not include prescription EQD2 below approximately 80 Gy; lower-dose curve is extrapolative"
+      },
+      "cohort": {
+        "systematic_review_total_patients": 4821,
+        "five_year_fit_patients": 1069,
+        "contributing_studies_for_five_year_fit": 9
+      },
+      "source": {
+        "citation": "Royce TJ et al. Tumor Control Probability Modeling and Systematic Review of the Literature of Stereotactic Body Radiation Therapy for Prostate Cancer. IJROBP. 2021;110:227-236.",
+        "pmid": "32900561",
+        "doi": "10.1016/j.ijrobp.2020.08.014"
+      },
+      "status": "source_inconsistency_unresolved",
+      "implementation_notes": "The source reports D50=20.6 Gy and gamma=0.15, but those values inserted into the paper's displayed Poisson equation do not reproduce the same paper's stated 5-year predictions of 90% at EQD2=71 Gy and 95% at EQD2=90 Gy. BioRT preserves the published values but disables runtime calculation until the discrepancy is resolved from supplementary/source data or author clarification.",
+      "implementation": {
+        "input_mode": "prescription_dose",
+        "runtime_enabled": false,
+        "minimum_fractions": 4,
+        "maximum_fractions": 5,
+        "required_context_fields": [
+          "diagnosis",
+          "risk_group",
+          "setting"
+        ],
+        "runtime_note": "Do not repair or substitute gamma by inference. The source discrepancy must remain explicit.",
+        "runtime_reason": "Runtime disabled: published low/intermediate-risk D50/gamma values are numerically inconsistent with the paper's own stated 90%/95% TCP dose points under the displayed equation."
+      }
+    },
+    {
+      "id": "royce_2021_prostate_sbrt_ffbr_5y_high",
+      "model_family": "poisson_prescription_eqd2",
+      "equation_id": "poisson_power2_eqd2_prescription",
+      "disease": {
+        "diagnosis": "prostate_cancer",
+        "setting": "definitive_sbrt",
+        "risk_group": "high"
+      },
+      "target": {
+        "canonical_structure": "prescription_course",
+        "description": "Pooled prostate SBRT prescription dose; patient-level DVHs were unavailable.",
+        "source_dose_descriptor": "prescription dose converted to EQD2"
+      },
+      "endpoint": {
+        "name": "freedom from biochemical relapse",
+        "definition": "pooled 5-year FFBR for high-risk localized prostate cancer",
+        "time_point": "5 years"
+      },
+      "parameters": {
+        "d50_gy": 84.2,
+        "d50_ci95_gy": [
+          81.4,
+          86.8
+        ],
+        "gamma": 4.5,
+        "gamma_ci95": [
+          2.82,
+          6.53
+        ],
+        "alpha_beta_gy": 1.5
+      },
+      "dose_basis": {
+        "metric": "prescription dose converted to EQD2 using alpha/beta=1.5 Gy",
+        "source_fractionation": "32-50 Gy in 4-5 fractions"
+      },
+      "cohort": {
+        "five_year_fit_patients": 85,
+        "contributing_studies_for_five_year_fit": 3
+      },
+      "source": {
+        "citation": "Royce TJ et al. Tumor Control Probability Modeling and Systematic Review of the Literature of Stereotactic Body Radiation Therapy for Prostate Cancer. IJROBP. 2021;110:227-236.",
+        "pmid": "32900561",
+        "doi": "10.1016/j.ijrobp.2020.08.014"
+      },
+      "status": "context_specific_reference",
+      "implementation_notes": "High-risk fit is based on only 85 patients from 3 studies; the source explicitly urges caution.",
+      "implementation": {
+        "input_mode": "prescription_dose",
+        "runtime_enabled": true,
+        "minimum_fractions": 4,
+        "maximum_fractions": 5,
+        "required_context_fields": [
+          "diagnosis",
+          "risk_group",
+          "setting"
+        ],
+        "runtime_note": "The published D50=84.2 Gy and gamma=4.50 reproduce the paper's stated approximately 90% TCP at EQD2=97 Gy and 95% at EQD2=102 Gy. Source sample remains limited (85 patients from 3 studies)."
+      }
+    }
+  ],
+  "head_neck_models": [
+    {
+      "id": "vargo_2018_recurrent_hn_sbrt_local_control_2y",
+      "model_family": "logistic_prescription_dose",
+      "equation_id": "logistic_equivalent_fraction_count_dose",
+      "disease": {
+        "diagnosis": "head_neck_cancer",
+        "setting": "reirradiation_sbrt"
+      },
+      "target": {
+        "canonical_structure": "recurrent_head_neck_target",
+        "description": "Locally recurrent previously irradiated malignant head-and-neck target",
+        "source_dose_descriptor": "weighted average PTV marginal dose or stated prescription dose, converted to 5-fraction-equivalent total dose"
+      },
+      "endpoint": {
+        "name": "local or locoregional control",
+        "definition": "pooled source endpoint; nomenclature varied across included recurrent head-and-neck studies",
+        "time_point": "2 years"
+      },
+      "parameters": {
+        "d50_gy": 45.1,
+        "d50_ci95_gy": [
+          39.1,
+          71.5
+        ],
+        "gamma": 0.56,
+        "gamma_ci95": [
+          0.27,
+          0.85
+        ],
+        "alpha_beta_gy": 10
+      },
+      "dose_basis": {
+        "metric": "5-fraction-equivalent total prescription dose",
+        "conversion": "Withers/LQ isoeffect conversion to 5 fractions with alpha/beta=10 Gy"
+      },
+      "cohort": {
+        "type": "AAPM working-group pooled systematic review",
+        "cases": "more than 300 across 8 publications",
+        "context": "SBRT >6 weeks after prior radiotherapy; boost-like treatments within 6 weeks were excluded"
+      },
+      "source": {
+        "citation": "Vargo JA et al. Head and Neck Tumor Control Probability: Radiation Dose-Volume Effects in SBRT for Locally Recurrent Previously-Irradiated Head and Neck Cancer. IJROBP. 2021;110:137-146.",
+        "pmid": "29477291",
+        "doi": "10.1016/j.ijrobp.2018.01.044"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Pooled prescription-dose model unique to malignant recurrent previously irradiated head-and-neck disease. It excludes target volume, target coverage, histology, HPV status and prior-dose spatial overlap.",
+      "implementation": {
+        "input_mode": "prescription_dose",
+        "runtime_enabled": true,
+        "reference_fraction_count": 5,
+        "required_context_fields": [
+          "diagnosis",
+          "setting"
+        ]
+      }
+    },
+    {
+      "id": "vargo_2018_recurrent_hn_sbrt_local_control_3y",
+      "model_family": "logistic_prescription_dose",
+      "equation_id": "logistic_equivalent_fraction_count_dose",
+      "disease": {
+        "diagnosis": "head_neck_cancer",
+        "setting": "reirradiation_sbrt"
+      },
+      "target": {
+        "canonical_structure": "recurrent_head_neck_target",
+        "description": "Locally recurrent previously irradiated malignant head-and-neck target",
+        "source_dose_descriptor": "weighted average PTV marginal dose or stated prescription dose, converted to 5-fraction-equivalent total dose"
+      },
+      "endpoint": {
+        "name": "local or locoregional control",
+        "definition": "pooled source endpoint; nomenclature varied across included studies",
+        "time_point": "3 years"
+      },
+      "parameters": {
+        "d50_gy": 49.8,
+        "d50_ci95_gy": [
+          43.7,
+          72.8
+        ],
+        "gamma": 0.94,
+        "gamma_ci95": [
+          0.49,
+          1.43
+        ],
+        "alpha_beta_gy": 10
+      },
+      "dose_basis": {
+        "metric": "5-fraction-equivalent total prescription dose",
+        "conversion": "Withers/LQ isoeffect conversion to 5 fractions with alpha/beta=10 Gy"
+      },
+      "cohort": {
+        "type": "AAPM working-group pooled systematic review",
+        "cases": "more than 300 across 8 publications"
+      },
+      "source": {
+        "citation": "Vargo JA et al. Head and Neck Tumor Control Probability: Radiation Dose-Volume Effects in SBRT for Locally Recurrent Previously-Irradiated Head and Neck Cancer. IJROBP. 2021;110:137-146.",
+        "pmid": "29477291",
+        "doi": "10.1016/j.ijrobp.2018.01.044"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "The 3-year dose-response was statistically significant in the pooled analysis, but the number at risk was smaller than at earlier time points.",
+      "implementation": {
+        "input_mode": "prescription_dose",
+        "runtime_enabled": true,
+        "reference_fraction_count": 5,
+        "required_context_fields": [
+          "diagnosis",
+          "setting"
+        ]
+      }
+    }
+  ],
+  "evidence_only": [
+    {
+      "id": "liu_2017_early_nsclc_sbrt_tcp_multimodel",
+      "topic": "early-stage NSCLC SBRT tumor-control modeling",
+      "key_findings": "Pooled 46-study analysis compared six biophysical models. Fits consistently favored large alpha/beta around 20 Gy; BED calculated with alpha/beta=20 Gy around 90 Gy was associated with TCP >=95% for T1 tumors. The regrowth model fit better than the other five.",
+      "source": {
+        "pmid": "27871671",
+        "doi": "10.1016/j.radonc.2016.11.006"
+      },
+      "reason_not_computable_here": "The full source contains multiple model families and stage-specific parameter sets. BioRT will not select one parameter row until the exact model table is extracted and independently regression-tested."
+    }
+  ]
+}

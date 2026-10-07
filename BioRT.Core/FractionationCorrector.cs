@@ -44,6 +44,54 @@ public static class FractionationCorrector
     }
 
     /// <summary>
+    /// Converts one equal-fraction course to an isoeffective total dose
+    /// delivered in a specified number of equal fractions.
+    ///
+    /// Solves:
+    ///   N1*d1*(d1 + alpha/beta) = N2*d2*(d2 + alpha/beta)
+    /// for d2 and returns N2*d2.
+    ///
+    /// This is useful for literature that reports, for example, a
+    /// five-fraction-equivalent total dose rather than EQD2.
+    /// </summary>
+    public static double CalculateEquivalentTotalDoseForFractions(
+        double totalDoseGy,
+        int sourceFractions,
+        int targetFractions,
+        double alphaBetaGy)
+    {
+        Validate(
+            totalDoseGy,
+            sourceFractions,
+            alphaBetaGy,
+            referenceFractionGy: 2.0);
+
+        if (targetFractions <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(targetFractions),
+                "Target number of fractions must be > 0.");
+        }
+
+        double sourceDosePerFractionGy =
+            totalDoseGy / sourceFractions;
+
+        double isoeffect =
+            sourceFractions *
+            sourceDosePerFractionGy *
+            (sourceDosePerFractionGy + alphaBetaGy);
+
+        double discriminant =
+            alphaBetaGy * alphaBetaGy +
+            4.0 * isoeffect / targetFractions;
+
+        double targetDosePerFractionGy =
+            (-alphaBetaGy + Math.Sqrt(discriminant)) / 2.0;
+
+        return targetFractions * targetDosePerFractionGy;
+    }
+
+    /// <summary>
     /// Converts every dose bin of a cumulative DVH to an equivalent-dose scale.
     /// Cumulative volume values remain unchanged because the transformation is monotonic.
     /// </summary>

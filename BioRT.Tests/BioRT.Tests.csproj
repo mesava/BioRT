@@ -24,6 +24,9 @@
     <Content Include="..\BioRT.App\data\ntcp_parameters_v2.json" Link="data\ntcp_parameters_v2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\BioRT.App\data\tcp_parameters_v2.json" Link="data\tcp_parameters_v2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\BioRT.App\data\aliases.json" Link="data\aliases.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

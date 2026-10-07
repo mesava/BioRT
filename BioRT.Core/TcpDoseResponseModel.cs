@@ -166,6 +166,91 @@ public static class TcpDoseResponseModel
     }
 
     /// <summary>
+    /// Poisson dose-response formulation used by Royce et al. for prostate SBRT:
+    ///
+    /// TCP = 2 ^ {-exp[e*gamma*(1 - EQD2/D50)]}
+    ///
+    /// This is intentionally kept separate from the TG-166 Eq. (9)
+    /// linear-Poisson implementation because the gamma parameterization differs.
+    /// </summary>
+    public static double CalculatePoissonPowerOfTwoFromEqd2(
+        double eqd2Gy,
+        double d50Gy,
+        double gamma)
+    {
+        ValidateNonNegativeFinite(eqd2Gy, nameof(eqd2Gy));
+        ValidatePositiveFinite(d50Gy, nameof(d50Gy));
+        ValidatePositiveFinite(gamma, nameof(gamma));
+
+        double exponent =
+            Math.E * gamma *
+            (1.0 - eqd2Gy / d50Gy);
+
+        if (exponent > 709.0)
+            return 0.0;
+
+        if (exponent < -745.0)
+            return 1.0;
+
+        double power = -Math.Exp(exponent);
+
+        return Math.Clamp(
+            Math.Pow(2.0, power),
+            0.0,
+            1.0);
+    }
+
+    public static double CalculatePoissonPowerOfTwoFromPrescription(
+        double totalPrescriptionDoseGy,
+        int fractions,
+        double alphaBetaGy,
+        double d50Gy,
+        double gamma)
+    {
+        double eqd2 =
+            FractionationCorrector.CalculateEquivalentDose(
+                totalPrescriptionDoseGy,
+                fractions,
+                alphaBetaGy,
+                referenceFractionGy: 2.0);
+
+        return CalculatePoissonPowerOfTwoFromEqd2(
+            eqd2,
+            d50Gy,
+            gamma);
+    }
+
+    /// <summary>
+    /// Scalar logistic dose-response:
+    ///
+    /// P(D) = exp[(D-D50)/k] / (1 + exp[(D-D50)/k])
+    /// k = D50 / (4*gamma)
+    ///
+    /// Used for literature fits based on one representative or transformed
+    /// prescription dose rather than a target DVH.
+    /// </summary>
+    public static double CalculateLogisticFromDose(
+        double doseGy,
+        double d50Gy,
+        double gamma)
+    {
+        ValidateNonNegativeFinite(doseGy, nameof(doseGy));
+        ValidatePositiveFinite(d50Gy, nameof(d50Gy));
+        ValidatePositiveFinite(gamma, nameof(gamma));
+
+        double k =
+            d50Gy /
+            (4.0 * gamma);
+
+        double z =
+            (doseGy - d50Gy) /
+            k;
+
+        return ProbabilityFromLog(
+            LogSigmoid(z));
+    }
+
+    /// <summary>
     /// TG-166 Eq. (10), the empirical logistic model used by Okunieff et al.
     ///
     /// P(D_i) = exp[(D_i-D50)/k] / (1 + exp[(D_i-D50)/k])
@@ -331,6 +416,20 @@ public static class TcpDoseResponseModel
         ValidatePositiveFinite(d50Gy, nameof(d50Gy));
         ValidatePositiveFinite(gamma, nameof(gamma));
         ValidatePositiveFinite(alphaBetaGy, nameof(alphaBetaGy));
+    }
+
+    private static void ValidateNonNegativeFinite(
+        double value,
+        string parameterName)
+    {
+        if (double.IsNaN(value) ||
+            double.IsInfinity(value) ||
+            value < 0.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                "Value must be finite and >= 0.");
+        }
     }
 
     private static void ValidatePositiveFinite(
