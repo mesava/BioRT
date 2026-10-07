@@ -27,6 +27,26 @@ public class ArchiveBundleReaderTests
     }
 
     [Fact]
+    public async Task ReadAsync_WorksWithAsyncOnlyBrowserLikeStream()
+    {
+        await using MemoryStream zip =
+            CreateZip(
+                ("RTPLAN.dcm", new byte[] { 1, 2, 3 }),
+                ("criteria.json", "{}"u8.ToArray()));
+
+        await using var browserLike =
+            new AsyncOnlyReadStream(
+                zip.ToArray());
+
+        IReadOnlyList<ArchiveBundleEntry> entries =
+            await ArchiveBundleReader.ReadAsync(browserLike);
+
+        Assert.Equal(2, entries.Count);
+        Assert.Contains(entries, x => x.Name == "RTPLAN.dcm");
+        Assert.Contains(entries, x => x.Name == "criteria.json");
+    }
+
+    [Fact]
     public async Task ReadAsync_RejectsArchiveWithoutSupportedFiles()
     {
         await using MemoryStream zip =
@@ -157,4 +177,91 @@ public class ArchiveBundleReaderTests
         stream.CopyTo(target);
         return target.ToArray();
     }
+
+    private sealed class AsyncOnlyReadStream : Stream
+    {
+        private readonly MemoryStream _inner;
+
+        public AsyncOnlyReadStream(byte[] bytes)
+        {
+            _inner = new MemoryStream(bytes, writable: false);
+        }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+            => throw new NotSupportedException();
+
+        public override int Read(
+            byte[] buffer,
+            int offset,
+            int count)
+            => throw new NotSupportedException(
+                "Synchronous reads are not supported.");
+
+        public override int Read(
+            Span<byte> buffer)
+            => throw new NotSupportedException(
+                "Synchronous reads are not supported.");
+
+        public override int ReadByte()
+            => throw new NotSupportedException(
+                "Synchronous reads are not supported.");
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => _inner.ReadAsync(
+                buffer,
+                cancellationToken);
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken)
+            => _inner.ReadAsync(
+                buffer,
+                offset,
+                count,
+                cancellationToken);
+
+        public override long Seek(
+            long offset,
+            SeekOrigin origin)
+            => throw new NotSupportedException();
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override void Write(
+            byte[] buffer,
+            int offset,
+            int count)
+            => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _inner.Dispose();
+
+            base.Dispose(disposing);
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            await _inner.DisposeAsync();
+            await base.DisposeAsync();
+        }
+    }
+
 }
