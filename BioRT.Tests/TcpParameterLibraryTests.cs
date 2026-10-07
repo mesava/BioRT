@@ -63,6 +63,20 @@ public class TcpParameterLibraryTests
     }
 
     [Fact]
+    public void FindById_IsExactAndCaseInsensitive()
+    {
+        var library = TcpModelLibrary.Load(LibraryPath);
+
+        var model = library.FindById(
+            "SACHPazidis_2020_prostate_gland_lq_poisson_mixed_followup");
+
+        Assert.NotNull(model);
+        Assert.Equal(
+            "sachpazidis_2020_prostate_gland_lq_poisson_mixed_followup",
+            model!.Id);
+    }
+
+    [Fact]
     public void Selector_SeparatesProstateSbrtRiskGroups()
     {
         var selector = new TcpModelSelector(
