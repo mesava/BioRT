@@ -81,13 +81,20 @@ public static class ClinicalContextLoader
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (!string.Equals(
+        bool supportedSchema =
+            string.Equals(
                 context.SchemaVersion,
                 "0.1.0",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                context.SchemaVersion,
+                "0.2.0",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (!supportedSchema)
         {
             throw new InvalidOperationException(
-                $"Unsupported clinical_context schema_version '{context.SchemaVersion}'. Expected 0.1.0.");
+                $"Unsupported clinical_context schema_version '{context.SchemaVersion}'. Supported: 0.1.0, 0.2.0.");
         }
 
         if (context.Patient.AgeYears is double age &&
@@ -128,6 +135,14 @@ public static class ClinicalContextLoader
             context.Baseline.Xerostomia,
             XerostomiaCategories,
             "baseline.xerostomia");
+
+        if (string.IsNullOrWhiteSpace(context.Tcp.ModelId) &&
+            (!string.IsNullOrWhiteSpace(context.Tcp.TargetStructureName) ||
+             !string.IsNullOrWhiteSpace(context.Tcp.TargetRole)))
+        {
+            throw new InvalidOperationException(
+                "tcp.target_structure_name / tcp.target_role require tcp.model_id.");
+        }
 
         if (string.Equals(
                 context.Patient.SmokingStatus,
