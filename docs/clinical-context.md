@@ -16,7 +16,7 @@ A non-identifying example is provided at:
 examples/clinical_context.example.json
 ```
 
-## Schema v0.1.0
+## Schema v0.2.0
 
 Supported fields currently include:
 
@@ -29,13 +29,19 @@ patient.pulmonary_comorbidity
 tumor.diagnosis
 tumor.histology
 tumor.stage
+tumor.risk_group
 tumor.location
 tumor.laterality
 
+treatment.setting
 treatment.chemotherapy_sequence
 treatment.immunotherapy
 
 baseline.xerostomia
+
+tcp.model_id
+tcp.target_structure_name
+tcp.target_role
 
 model_overrides.numeric
 model_overrides.categorical
@@ -124,3 +130,92 @@ The Monaco criteria JSON is now detected by its required `prescriptions` array r
 Do not put patient names, IDs or other direct identifiers into `clinical_context.json`.
 
 For public GitHub fixtures, use synthetic/non-identifying examples only.
+
+
+## Explicit TCP request
+
+TCP is intentionally **opt-in**. BioRT does not choose a tumor model from a structure name such as `PTV_70`.
+
+To request TCP, specify an exact model ID from `tcp_parameters_v2.json`.
+
+### Prescription-dose model example
+
+```json
+{
+  "tumor": {
+    "diagnosis": "prostate_cancer",
+    "histology": "adenocarcinoma",
+    "risk_group": "high"
+  },
+  "treatment": {
+    "setting": "definitive_sbrt"
+  },
+  "tcp": {
+    "model_id": "royce_2021_prostate_sbrt_ffbr_5y_high",
+    "target_role": "prescription_course"
+  }
+}
+```
+
+For a prescription-dose model, BioRT uses the RTPLAN fraction count and target prescription dose/fractionation after checking the selected model's source domain.
+
+### Target-DVH model example
+
+For a model derived from an actual target DVH, the exact RTSTRUCT ROI and its semantic role must both be explicit:
+
+```json
+{
+  "tumor": {
+    "diagnosis": "prostate_cancer"
+  },
+  "treatment": {
+    "setting": "definitive_ebrt"
+  },
+  "tcp": {
+    "model_id": "sachpazidis_2020_prostate_gland_lq_poisson_mixed_followup",
+    "target_structure_name": "Prostate",
+    "target_role": "prostate_gland"
+  }
+}
+```
+
+BioRT performs a case-insensitive **exact** ROI-name lookup for TCP targets. It does not use substring/fuzzy matching. Therefore `Prostate` cannot silently resolve to `PTV_Prostate`.
+
+The explicit `target_role` must also equal the source model target definition. A `target_role` of `ptv` is rejected for the Sachpazidis prostate-gland model even if a PTV DVH is available.
+
+This separates two questions:
+
+```text
+Which RTSTRUCT contour should be sampled?
+        target_structure_name
+
+What biological target does that contour represent?
+        target_role
+```
+
+Both are required for a target-DVH TCP model.
+
+### Risk group and treatment setting
+
+`tumor.risk_group` and `treatment.setting` use the canonical values expected by the selected model record.
+
+Current examples include:
+
+```text
+risk_group:
+  low_intermediate
+  high
+
+setting:
+  definitive_ebrt
+  definitive_sbrt
+  reirradiation_sbrt
+```
+
+These fields are intentionally not guessed from prescription dose, fraction count, PTV name or diagnosis.
+
+### Backward compatibility
+
+Schema `0.1.0` remains readable for NTCP-only workflows. New TCP-selection fields were introduced in schema `0.2.0`.
+
+If `tcp.model_id` is omitted, BioRT performs no TCP calculation and all existing physical-plan/NTCP processing continues unchanged.
