@@ -287,3 +287,24 @@ BioRT now treats lung RP as a dedicated model domain rather than a generic organ
 - [x] Moiseenko V, et al. *Dose-Volume Predictors of Radiation Pneumonitis After Lung SBRT: Implications for Practice and Trial Design*. 2020. PMID 33163312.
   - Summarizes HyTEC-era SBRT guidance around MLD <8 Gy and V20 <10–15%; retained as SBRT-specific reference evidence, not as a conventional LKB extrapolation.
 
+
+
+## P1 — provenance TCP library: first accepted source-specific records
+
+- [x] Sachpazidis I, et al. *Prostate cancer tumour control probability modelling for external beam radiotherapy based on multi-parametric MRI-GTV definition*. Radiat Oncol. 2020;15:242. PMID 33081804.
+  - Individual patient target DVHs, not prescription dose only.
+  - Prostate-gland mixed-follow-up fit: D50 66.8 Gy, gamma 3.8, alpha/beta 1.3 Gy.
+  - Separate 5-year prostate-gland fit: D50 64.6 Gy, gamma 3.1, alpha/beta 2.2 Gy.
+  - The source explicitly found the prostate-gland target model more robust than the mpMRI-GTV model.
+- [x] Royce TJ, et al. *Tumor Control Probability Modeling and Systematic Review of the Literature of Stereotactic Body Radiation Therapy for Prostate Cancer*. IJROBP. 2021;110:227-236. PMID 32900561.
+  - Prescription-dose SBRT model; alpha/beta 1.5 Gy; 4-5 fractions.
+  - High-risk D50 84.2 Gy, gamma 4.50 reproduces the paper's stated ~90% at EQD2 97 Gy and ~95% at EQD2 102 Gy.
+  - **Low/intermediate record is runtime-disabled:** the published D50 20.6 Gy / gamma 0.15 pair does not reproduce the same paper's stated 90% at 71 Gy and 95% at 90 Gy under its displayed Poisson equation. Do not infer a corrected coefficient.
+- [x] Vargo JA, et al. *Head and Neck Tumor Control Probability: Radiation Dose-Volume Effects in SBRT for Locally Recurrent Previously-Irradiated Head and Neck Cancer*. IJROBP. 2021;110:137-146. PMID 29477291.
+  - Pooled recurrent/reirradiation SBRT evidence only, not a primary-HNSCC model.
+  - Source prescription/PTV marginal doses were converted to 5-fraction-equivalent total dose using alpha/beta 10 Gy.
+  - 2-year LC: D50 45.1 Gy, gamma 0.56.
+  - 3-year LC: D50 49.8 Gy, gamma 0.94.
+- [ ] Liu F, et al. early-stage NSCLC SBRT multi-model TCP analysis. PMID 27871671.
+  - Retained evidence-only for now because the paper compares six model families; exact model-specific tables/equations must be extracted before one is promoted to runtime.
+
