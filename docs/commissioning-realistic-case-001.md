@@ -1,6 +1,6 @@
 # Realistic commissioning case 001
 
-Status: **local scientific review completed; BioRT fix PR #28 green; post-merge browser fingerprint still required**.
+Status: **scientific review completed; fixes merged; ZIP upload deployed; final live-browser fingerprint capture pending**.
 
 The source archive is a hypothetical/synthetic-patient RT export supplied for commissioning. It is intentionally **not committed** to the public repository.
 
@@ -45,7 +45,7 @@ In this case that changed the evaluated object dramatically:
 - correct Brainstem Dmax: approximately 36.85 Gy;
 - whole-Brain maximum: approximately 65.14 Gy.
 
-PR #28 changes criterion structure resolution to:
+PR #28 changed criterion structure resolution to:
 1. exact case-insensitive match first;
 2. unique containment fallback only;
 3. ambiguous partial matches fail safely with a warning.
@@ -77,10 +77,12 @@ For this case that omitted:
 
 PR #28 evaluates every explicit clinical goal while still using D50% >= Rx for PTV prescription identification.
 
+PR #28 is merged into main and passed both BioRT CI and BioRT Web CI.
+
 ## Physical results after corrected structure matching
 
 PTV:
-- sampled dose-grid volume: approximately 274.44 cm3;
+- sampled dose-grid volume: approximately 274.45 cm3;
 - D2%: 63.4 Gy;
 - D98%: 59.7 Gy;
 - D95%: 60.3 Gy;
@@ -95,7 +97,7 @@ Selected OAR metrics:
 - Cochlea_L Dmean: approximately 1.59 Gy;
 - Cochlea_R Dmean: approximately 1.55 Gy;
 - Eye_L Dmax / Dmean: approximately 16.95 / 3.63 Gy;
-- Eye_R Dmax / Dmean: approximately 8.67 / 2.22 Gy;
+- Eye_R Dmax / Dmean: approximately 8.67 / 2.21 Gy;
 - Lens_L Dmean: approximately 2.00 Gy;
 - Lens_R Dmean: approximately 1.79 Gy;
 - OpticChiasm Dmax: approximately 9.23 Gy;
@@ -136,6 +138,30 @@ This does not invalidate the present dose-grid DVH commissioning case, but it id
 - validate/interpolate RTSTRUCT-to-RTDOSE rasterization for small structures;
 - distinguish contour-derived geometric volume from sampled dose-grid mask volume where absolute-volume metrics Dcc/Vcc are used.
 
+This work is tracked in issue #29.
+
+## Browser commissioning workflow
+
+PR #30 is merged and deployed.
+
+BioRT.Web now accepts either:
+- individual RTPLAN / RTDOSE / RTSTRUCT + JSON files; or
+- one ZIP containing those files.
+
+The ZIP is expanded only in browser memory with limits on supported entry count and cumulative uncompressed size.
+
+The Web UI now displays the full 64-character SHA-256 commissioning fingerprint rather than only the first 16 characters.
+
+For this case the intended final live-browser step is therefore:
+
+1. open https://mesava.github.io/BioRT/;
+2. select the original commissioning ZIP as one file;
+3. confirm 30 fractions, 2 Gy/fx, 14 RTSTRUCT ROI and 21 criteria;
+4. confirm the physical metrics above;
+5. record the full Commissioning SHA-256.
+
+No clinical_context.json is required for this phase.
+
 ## Acceptance status
 
 Passed:
@@ -146,13 +172,13 @@ Passed:
 - 21/21 Monaco criteria parsing;
 - physical DVH/metric calculation sanity review;
 - identification and regression-test coverage of the three matching/PTV-goal defects;
-- PR #28 BioRT CI;
-- PR #28 BioRT Web CI.
+- PR #28 merged and deployed;
+- PR #30 ZIP upload merged and deployed;
+- current main BioRT CI;
+- current main BioRT Web CI;
+- current main GitHub Pages deployment.
 
-Still required after PR #28 reaches main:
-1. GitHub Pages redeploy;
-2. load the same local archive in BioRT.Web;
-3. record the Web commissioning fingerprint;
-4. compare against the same-version console/shared-analysis fingerprint when run in a .NET environment.
+Still required:
+- one final live-browser run of the original ZIP to capture the authoritative BioRT.Web full SHA-256 for this realistic commissioning case.
 
 The source DICOM archive must remain outside the public repository.
