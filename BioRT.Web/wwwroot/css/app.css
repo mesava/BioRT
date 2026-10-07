@@ -420,6 +420,23 @@ h3 {
     font-size: 1.35rem;
 }
 
+.fingerprint {
+    margin: 10px 0 0;
+    color: #687b85;
+    font-size: .8rem;
+}
+
+.fingerprint code {
+    margin-left: 6px;
+    padding: 4px 7px;
+    border-radius: 7px;
+    color: #204e59;
+    background: #eaf4f6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
 .analysis-context {
     display: flex;
     gap: 8px;

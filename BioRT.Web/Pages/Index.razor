@@ -145,6 +145,13 @@
                     <div>
                         <p class="eyebrow">Результат расчёта</p>
                         <h3>Полный анализ выполнен локально</h3>
+                        @if (!string.IsNullOrWhiteSpace(AnalysisFingerprint))
+                        {
+                            <p class="fingerprint">
+                                Commissioning fingerprint:
+                                <code>@AnalysisFingerprint</code>
+                            </p>
+                        }
                     </div>
                     <div class="analysis-context">
                         <span>@CriteriaStatus</span>
@@ -461,6 +468,7 @@
     private string? ImportError;
     private string CriteriaStatus = "Criteria JSON: не найден";
     private string ClinicalContextStatus = "Clinical context: не задан";
+    private string? AnalysisFingerprint;
     private bool IsImporting;
 
     private IReadOnlyList<CatalogModel> NtcpModels = Array.Empty<CatalogModel>();
@@ -494,6 +502,7 @@
     {
         ImportedDicom = null;
         AnalysisResult = null;
+        AnalysisFingerprint = null;
         ImportError = null;
         CriteriaStatus = "Criteria JSON: не найден";
         ClinicalContextStatus = "Clinical context: не задан";
@@ -609,6 +618,11 @@
                         TcpLibrary =
                             AnalysisResources.TcpLibrary
                     });
+
+            AnalysisFingerprint =
+                PlanAnalysisFingerprint.ComputeShort(
+                    ImportedDicom.Plan,
+                    AnalysisResult);
         }
         catch (Exception ex)
         {

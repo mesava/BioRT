@@ -344,6 +344,11 @@ internal class Program
             foreach (string warning in analysis.Warnings)
                 Console.WriteLine($"  WARNING: {warning}");
         }
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"Analysis fingerprint: {PlanAnalysisFingerprint.ComputeShort(plan, analysis)}");
+
         Console.WriteLine();
         Console.WriteLine("Finished successfully.");
         Console.ReadKey();
