@@ -235,7 +235,7 @@ public class SyntheticDicomCommissioningTests
         dataset.Add(DicomTag.Columns, (ushort)2);
         dataset.Add(DicomTag.PixelSpacing, 1.0, 1.0);
         dataset.Add(DicomTag.ImagePositionPatient, 0.0, 0.0, 0.0);
-        dataset.Add(DicomTag.GridFrameOffsetVector, 0.0);
+        dataset.Add(DicomTag.GridFrameOffsetVector, 0.0, 1.0);
 
         dataset.Add(DicomTag.SamplesPerPixel, (ushort)1);
         dataset.Add(
@@ -261,6 +261,9 @@ public class SyntheticDicomCommissioningTests
 
         pixelData.AddFrame(
             new MemoryByteBuffer(frame));
+
+        pixelData.AddFrame(
+            new MemoryByteBuffer((byte[])frame.Clone()));
 
         return new DicomFile(dataset);
     }
