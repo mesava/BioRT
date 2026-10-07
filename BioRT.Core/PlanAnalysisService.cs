@@ -40,6 +40,10 @@ public sealed class PlanAnalysisService
             new Dictionary<string, StructureMask>(
                 StringComparer.OrdinalIgnoreCase);
 
+        var criterionMatches =
+            new Dictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
+
         double voxelVolumeCc =
             request.Plan.Dose.SpacingX *
             request.Plan.Dose.SpacingY *
@@ -63,13 +67,17 @@ public sealed class PlanAnalysisService
                 continue;
             }
 
-            EnsureCriterionStructure(
-                requestedName,
-                request,
-                volumes,
-                masks,
-                voxelVolumeCc,
-                warnings);
+            StructureDVH? matched =
+                EnsureCriterionStructure(
+                    requestedName,
+                    request,
+                    volumes,
+                    masks,
+                    voxelVolumeCc,
+                    warnings);
+
+            if (matched != null)
+                criterionMatches[requestedName] = matched.Name;
         }
 
         TcpAnalysisResult? tcp =
@@ -84,6 +92,7 @@ public sealed class PlanAnalysisService
             EvaluatePtvMetrics(
                 request,
                 ptvRx,
+                criterionMatches,
                 volumes,
                 masks,
                 warnings);
@@ -91,7 +100,7 @@ public sealed class PlanAnalysisService
         var criterionResults =
             EvaluateClinicalCriteria(
                 request,
-                ptvRx,
+                criterionMatches,
                 volumes,
                 warnings);
 
@@ -99,6 +108,7 @@ public sealed class PlanAnalysisService
             EvaluateNtcp(
                 request,
                 ptvRx,
+                criterionMatches,
                 warnings);
 
         var structureResults =
@@ -157,45 +167,101 @@ public sealed class PlanAnalysisService
         double voxelVolumeCc,
         IList<string> warnings)
     {
-        StructureDVH? existing =
-            request.Plan.DVHs.Values.FirstOrDefault(d =>
-                d.Name.Contains(
-                    requestedName,
-                    StringComparison.OrdinalIgnoreCase) ||
-                requestedName.Contains(
-                    d.Name,
-                    StringComparison.OrdinalIgnoreCase));
-
-        if (existing != null)
-            return existing;
-
-        var match = request.StructureNames.FirstOrDefault(r =>
-            r.Value.Contains(
+        KeyValuePair<int, string>? match =
+            ResolveCriterionStructure(
                 requestedName,
-                StringComparison.OrdinalIgnoreCase) ||
-            requestedName.Contains(
-                r.Value,
-                StringComparison.OrdinalIgnoreCase));
+                request.StructureNames,
+                out string? matchError);
 
-        if (match.Key == 0 ||
-            !request.Contours.TryGetValue(
-                match.Key,
+        if (match == null)
+        {
+            warnings.Add(
+                matchError ??
+                $"Structure referenced by criteria was not found: '{requestedName}'.");
+
+            return null;
+        }
+
+        if (request.Plan.DVHs.TryGetValue(
+                match.Value.Value,
+                out StructureDVH? existing))
+        {
+            return existing;
+        }
+
+        if (!request.Contours.TryGetValue(
+                match.Value.Key,
                 out List<double[]>? contours) ||
             contours.Count == 0)
         {
             warnings.Add(
-                $"Structure referenced by criteria was not found or has no contours: '{requestedName}'.");
+                $"Structure referenced by criteria has no contours: '{requestedName}' -> '{match.Value.Value}'.");
 
             return null;
         }
 
         return BuildStructureDvh(
-            match.Value,
+            match.Value.Value,
             contours,
             request,
             volumes,
             masks,
             voxelVolumeCc);
+    }
+
+    private static KeyValuePair<int, string>? ResolveCriterionStructure(
+        string requestedName,
+        IReadOnlyDictionary<int, string> structureNames,
+        out string? error)
+    {
+        error = null;
+
+        KeyValuePair<int, string>[] exact =
+            structureNames
+                .Where(r => string.Equals(
+                    r.Value,
+                    requestedName,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+        if (exact.Length == 1)
+            return exact[0];
+
+        if (exact.Length > 1)
+        {
+            error =
+                $"RTSTRUCT contains multiple exact matches for criterion structure '{requestedName}'.";
+            return null;
+        }
+
+        KeyValuePair<int, string>[] partial =
+            structureNames
+                .Where(r =>
+                    r.Value.Contains(
+                        requestedName,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    requestedName.Contains(
+                        r.Value,
+                        StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+        if (partial.Length == 1)
+            return partial[0];
+
+        if (partial.Length > 1)
+        {
+            error =
+                $"Ambiguous RTSTRUCT match for criterion structure '{requestedName}': " +
+                string.Join(
+                    ", ",
+                    partial.Select(x => x.Value));
+            return null;
+        }
+
+        error =
+            $"Structure referenced by criteria was not found: '{requestedName}'.";
+
+        return null;
     }
 
     private static StructureDVH? EnsureExactStructure(
@@ -314,6 +380,7 @@ public sealed class PlanAnalysisService
     private static IReadOnlyList<PtvAnalysisResult> EvaluatePtvMetrics(
         PlanAnalysisRequest request,
         IReadOnlyDictionary<string, double> ptvRx,
+        IReadOnlyDictionary<string, string> criterionMatches,
         IReadOnlyDictionary<string, double> volumes,
         IReadOnlyDictionary<string, StructureMask> masks,
         IList<string> warnings)
@@ -322,11 +389,16 @@ public sealed class PlanAnalysisService
 
         foreach (var pair in ptvRx)
         {
-            StructureDVH? dvh =
-                request.Plan.DVHs.Values.FirstOrDefault(d =>
-                    d.Name.Contains(
-                        pair.Key,
-                        StringComparison.OrdinalIgnoreCase));
+            StructureDVH? dvh = null;
+
+            if (criterionMatches.TryGetValue(
+                    pair.Key,
+                    out string? matchedName))
+            {
+                request.Plan.DVHs.TryGetValue(
+                    matchedName,
+                    out dvh);
+            }
 
             if (dvh == null)
             {
@@ -387,24 +459,24 @@ public sealed class PlanAnalysisService
     private static IReadOnlyList<ClinicalCriterionEvaluation>
         EvaluateClinicalCriteria(
             PlanAnalysisRequest request,
-            IReadOnlyDictionary<string, double> ptvRx,
+            IReadOnlyDictionary<string, string> criterionMatches,
             IReadOnlyDictionary<string, double> volumes,
             IList<string> warnings)
     {
         var results =
             new List<ClinicalCriterionEvaluation>();
 
-        foreach (DoseCriterion criterion in request.Criteria.Where(
-                     c => !ptvRx.ContainsKey(c.StructureName)))
+        foreach (DoseCriterion criterion in request.Criteria)
         {
-            StructureDVH? dvh =
-                request.Plan.DVHs.Values.FirstOrDefault(d =>
-                    d.Name.Contains(
-                        criterion.StructureName,
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (dvh == null)
+            if (!criterionMatches.TryGetValue(
+                    criterion.StructureName,
+                    out string? matchedName) ||
+                !request.Plan.DVHs.TryGetValue(
+                    matchedName,
+                    out StructureDVH? dvh))
+            {
                 continue;
+            }
 
             if (!volumes.TryGetValue(
                     dvh.Name,
@@ -470,6 +542,7 @@ public sealed class PlanAnalysisService
     private static IReadOnlyList<NtcpAnalysisResult> EvaluateNtcp(
         PlanAnalysisRequest request,
         IReadOnlyDictionary<string, double> ptvRx,
+        IReadOnlyDictionary<string, string> criterionMatches,
         IList<string> warnings)
     {
         if (request.StructureMatcher == null ||
@@ -498,8 +571,19 @@ public sealed class PlanAnalysisService
         var results =
             new List<NtcpAnalysisResult>();
 
+        var ptvStructureNames =
+            ptvRx.Keys
+                .Select(key =>
+                    criterionMatches.TryGetValue(
+                        key,
+                        out string? matched)
+                            ? matched
+                            : key)
+                .ToHashSet(
+                    StringComparer.OrdinalIgnoreCase);
+
         foreach (StructureDVH dvh in request.Plan.DVHs.Values.Where(
-                     d => !ptvRx.ContainsKey(d.Name)))
+                     d => !ptvStructureNames.Contains(d.Name)))
         {
             string? canonical =
                 request.StructureMatcher.Match(dvh.Name);
