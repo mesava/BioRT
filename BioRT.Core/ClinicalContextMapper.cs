@@ -55,7 +55,8 @@ public static class ClinicalContextMapper
             Diagnosis = clinicalContext?.Tumor.Diagnosis,
             Histology = clinicalContext?.Tumor.Histology,
             RiskGroup = clinicalContext?.Tumor.RiskGroup,
-            Setting = clinicalContext?.Treatment.Setting
+            Setting = clinicalContext?.Treatment.Setting,
+            TargetRole = clinicalContext?.Tcp.TargetRole
         };
     }
 
