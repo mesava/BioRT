@@ -285,6 +285,49 @@ public static class PlanAnalysisComparator
         }
     }
 
+    private static void CompareCriterionValue(
+        List<PlanAnalysisDifference> differences,
+        string path,
+        ClinicalCriterionEvaluation baseline,
+        ClinicalCriterionEvaluation candidate,
+        PlanAnalysisToleranceOptions options)
+    {
+        if (baseline.Criterion.Type != candidate.Criterion.Type)
+            return;
+
+        switch (baseline.Criterion.Type)
+        {
+            case CriterionType.VxxGyPercent:
+                CompareAbsolute(
+                    differences,
+                    path,
+                    baseline.Value,
+                    candidate.Value,
+                    options.DvhVolumeAbsolutePercent);
+                break;
+
+            case CriterionType.VxxGyCc:
+                CompareNumber(
+                    differences,
+                    path,
+                    baseline.Value,
+                    candidate.Value,
+                    options.VolumeAbsoluteCc,
+                    options.VolumeRelative);
+                break;
+
+            default:
+                CompareNumber(
+                    differences,
+                    path,
+                    baseline.Value,
+                    candidate.Value,
+                    options.DoseAbsoluteGy,
+                    options.DoseRelative);
+                break;
+        }
+    }
+
     private static void CompareNtcp(
         List<PlanAnalysisDifference> differences,
         IReadOnlyList<NtcpAnalysisResult> baseline,
@@ -415,7 +458,12 @@ public static class PlanAnalysisComparator
         T candidate)
     {
         if (!EqualityComparer<T>.Default.Equals(baseline, candidate))
-            Add(differences, path, baseline?.ToString() ?? "null", candidate?.ToString() ?? "null", "exact");
+            Add(
+                differences,
+                path,
+                baseline is null ? "null" : baseline.ToString() ?? "",
+                candidate is null ? "null" : candidate.ToString() ?? "",
+                "exact");
     }
 
     private static void CompareText(
