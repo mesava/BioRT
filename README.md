@@ -16,6 +16,8 @@
 - `clinical_context.json` для переменных, которых нет в DICOM.
 - Общий `PlanAnalysisService` для Web и console regression harness.
 - Детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
+- Tolerance-based `PlanAnalysisComparator` для cross-version regression.
+- Автоматический synthetic DICOM commissioning folder-path ↔ stream-path.
 - TG-166 математические/аналитические regression tests.
 - GitHub Actions для scientific CI, Web CI и GitHub Pages.
 
@@ -26,6 +28,8 @@
 ```text
 https://mesava.github.io/BioRT/
 ```
+
+GitHub Pages deployment включён и успешно развёртывает `BioRT.Web`.
 
 `BioRT.Web` локально в памяти браузера принимает:
 - RTPLAN;
@@ -48,13 +52,14 @@ DICOM
 
 Web UI выводит физические метрики плана, PASS/FAIL клинических критериев, NTCP/TCP с идентификатором модели и provenance, а также commissioning fingerprint.
 
-DICOM не должен уходить на внешний сервер только ради расчёта: целевая архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
+DICOM не должен уходить на внешний сервер только ради расчёта: архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
 
-До завершения независимого browser-side commissioning используйте только синтетические или деидентифицированные клинические данные.
+Автоматический синтетический Web↔Console input-path commissioning уже проходит в CI. До завершения отдельного commissioning на реалистичном деидентифицированном клиническом наборе используйте только синтетические или деидентифицированные данные.
 
 Подробнее:
 - `docs/web-architecture.md`
 - `docs/web-console-commissioning.md`
+- `docs/tolerance-comparison.md`
 
 ## Проекты
 
@@ -93,7 +98,12 @@ BioRT не использует идею «один орган → один ко
 
 `BioRT.Web` и `BioRT.App` используют один `PlanAnalysisService`, но разные входные пути DICOM.
 
-Для одного и того же деидентифицированного RTPLAN / RTDOSE / RTSTRUCT + JSON начальный строгий критерий приёмки:
+Автоматический synthetic commissioning уже проверяет один и тот же сериализованный RTPLAN / RTDOSE / RTSTRUCT через оба пути и требует:
+- exact fingerprint equality;
+- `PlanAnalysisComparator` equality;
+- ожидаемые физические метрики.
+
+Для первого реалистичного деидентифицированного клинического набора строгий критерий остаётся:
 
 ```text
 web fingerprint == console fingerprint
@@ -115,4 +125,4 @@ dotnet run --project BioRT.Web/BioRT.Web.csproj
 
 BioRT остаётся исследовательским/commissioning-инструментом и не заявляет соответствие конкретному регуляторному режиму медицинского ПО или хранения медицинских данных.
 
-До завершения независимого commissioning на деидентифицированных клинических наборах результаты не должны использоваться как первичное основание для клинического решения.
+До завершения независимого commissioning на реалистичных деидентифицированных клинических наборах результаты не должны использоваться как первичное основание для клинического решения.
