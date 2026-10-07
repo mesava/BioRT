@@ -16,6 +16,7 @@
 	  <None Remove="data\tcp_ntcp_params.json" />
 	  <None Remove="data\aliases.json" />
 	  <None Remove="data\ntcp_parameters_v2.json" />
+	  <None Remove="data\tcp_parameters_v2.json" />
 	</ItemGroup>
 
 	<ItemGroup>
