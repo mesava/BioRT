@@ -7,6 +7,7 @@
 ## Что уже реализовано
 
 - Локальный browser-side импорт RTPLAN / RTDOSE / RTSTRUCT без отправки DICOM на сервер BioRT.
+- Локальная распаковка ZIP commissioning-наборов прямо в памяти браузера.
 - DVH и объёмы структур.
 - PTV: D2, D98, D95, D50, HI, CI, GI.
 - Клинические критерии: Dmean, Dmax, Dxx, Dcc, Vxx (% и cm³).
@@ -15,9 +16,10 @@
 - LQ / BED / EQD2 и model-specific fractionation handling.
 - `clinical_context.json` для переменных, которых нет в DICOM.
 - Общий `PlanAnalysisService` для Web и console regression harness.
-- Детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
+- Полный детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
 - Tolerance-based `PlanAnalysisComparator` для cross-version regression.
 - Автоматический synthetic DICOM commissioning folder-path ↔ stream-path.
+- Первый realistic synthetic-patient commissioning case с найденными и исправленными structure-matching/PTV-goal ошибками.
 - TG-166 математические/аналитические regression tests.
 - GitHub Actions для scientific CI, Web CI и GitHub Pages.
 
@@ -32,11 +34,14 @@ https://mesava.github.io/BioRT/
 GitHub Pages deployment включён и успешно развёртывает `BioRT.Web`.
 
 `BioRT.Web` локально в памяти браузера принимает:
+- один ZIP с согласованным commissioning-набором; или
 - RTPLAN;
 - RTDOSE;
 - RTSTRUCT;
 - optional Monaco criteria JSON;
 - optional `clinical_context.json`.
+
+ZIP распаковывается только в памяти браузера. BioRT не извлекает его во внешнюю файловую систему и не отправляет DICOM на сервер BioRT.
 
 После импорта браузер выполняет тот же общий вычислительный путь, что и `BioRT.App`:
 
@@ -50,22 +55,21 @@ DICOM
   -> warnings / provenance
 ```
 
-Web UI выводит физические метрики плана, PASS/FAIL клинических критериев, NTCP/TCP с идентификатором модели и provenance, а также commissioning fingerprint.
+Web UI выводит физические метрики плана, PASS/FAIL клинических критериев, NTCP/TCP с идентификатором модели и provenance, а также полный 64-символьный commissioning SHA-256.
 
-DICOM не должен уходить на внешний сервер только ради расчёта: архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
-
-Автоматический синтетический Web↔Console input-path commissioning уже проходит в CI. До завершения отдельного commissioning на реалистичном деидентифицированном клиническом наборе используйте только синтетические или деидентифицированные данные.
+Автоматический синтетический Web↔Console input-path commissioning уже проходит в CI. Первый realistic synthetic-patient case также используется для проверки поведения на реальном формате Monaco DICOM/criteria; исходный DICOM при этом не коммитится в публичный репозиторий.
 
 Подробнее:
 - `docs/web-architecture.md`
 - `docs/web-console-commissioning.md`
+- `docs/commissioning-realistic-case-001.md`
 - `docs/tolerance-comparison.md`
 
 ## Проекты
 
 ```text
 BioRT.Core   — DVH, физические метрики, TCP/NTCP, fractionation, model engines
-BioRT.IO     — DICOM / stream / файловый ввод-вывод
+BioRT.IO     — DICOM / stream / ZIP input
 BioRT.App    — локальный console regression/commissioning harness
 BioRT.Web    — основной пользовательский Web UI
 BioRT.Tests  — scientific and regression tests
@@ -103,7 +107,7 @@ BioRT не использует идею «один орган → один ко
 - `PlanAnalysisComparator` equality;
 - ожидаемые физические метрики.
 
-Для первого реалистичного деидентифицированного клинического набора строгий критерий остаётся:
+Для реалистичного деидентифицированного/синтетического клинического набора строгий критерий остаётся:
 
 ```text
 web fingerprint == console fingerprint
