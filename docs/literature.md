@@ -255,3 +255,35 @@ For multivariable NTCP/TCP models (logistic, Cox, machine-learning, radiomics), 
 - model-update version.
 
 **Rule:** a recent paper is not automatically a better source. A 2025–2026 model with poor external validity or weak calibration remains experimental; a well-defined older LKB fit may remain a better transparent benchmark for the classical branch.
+
+
+## P1 — lung / radiation pneumonitis
+
+BioRT now treats lung RP as a dedicated model domain rather than a generic organ row.
+
+- [x] Semenenko VA, Li XA. *LKB NTCP model parameters for radiation pneumonitis and xerostomia based on combined analysis of published clinical data*. Phys Med Biol. 2008. PMID 18199912.
+  - Total/paired lung symptomatic RP: TD50 29.9 Gy, m 0.41, n=1 fixed.
+  - Ipsilateral lung: TD50 37.6 Gy, m 0.35, n=1 fixed.
+  - Mean-dose EQD2 correction with alpha/beta=3 Gy for source cohorts using non-2-Gy daily fractions.
+- [x] Marks LB, et al. *Radiation dose-volume effects in the lung*. QUANTEC. IJROBP. 2010. PMID 20171521.
+  - Logistic MLD model: intercept -3.87, MLD coefficient 0.126/Gy.
+  - Probit/Lyman fit to the same pooled response: TD50 31.4 Gy, m 0.45, n=1.
+  - Conventional-fractionation guidance: V20 about <=30–35%, MLD <=20–23 Gy for symptomatic RP risk around <=20%.
+- [x] Appelt AL, et al. *Towards individualized dose constraints: Adjusting the QUANTEC radiation pneumonitis model for clinical risk factors*. Acta Oncol. 2014. PMID 23957623.
+  - Adds age, smoking, pulmonary comorbidity, tumor location and chemotherapy sequence to MLD.
+  - Independently tested in 103 patients.
+- [x] Niezink AGH, et al. *External validation of NTCP-models for radiation pneumonitis in lung cancer patients treated with chemoradiotherapy*. Radiother Oncol. 2023. PMID 37327975.
+  - Prospective 612-patient modern RT cohort.
+  - Original QUANTEC/Appelt required updating.
+  - Final New-RP model uses MLD, continuous age, and current/recent-smoking status.
+  - Source lung definition: Lungs-GTV; SBRT excluded.
+- [x] De Ruysscher D, et al. *Diagnosis and treatment of radiation induced pneumonitis in patients with lung cancer: An ESTRO clinical practice guideline*. Radiother Oncol. 2025. PMID 40185160.
+  - Modern clinical context for RP risk factors and dose-volume guidance.
+  - Recommends both lungs minus GTV for MLD/V20 definition.
+- [x] Chen Z, et al. *External validation and updating of NTCP models for radiation pneumonitis: QUANTEC, Appelt, and a local simplified model*. Front Oncol. 2026. PMID 42130623.
+  - Contemporary IMRT/multimodal validation shows substantial calibration drift of historical models.
+  - Model D preserves ranking in an external cohort but overestimates absolute risk.
+  - BioRT does not implement Model D yet because the article text and displayed final coefficient specification are inconsistent about tumor-location inclusion.
+- [x] Moiseenko V, et al. *Dose-Volume Predictors of Radiation Pneumonitis After Lung SBRT: Implications for Practice and Trial Design*. 2020. PMID 33163312.
+  - Summarizes HyTEC-era SBRT guidance around MLD <8 Gy and V20 <10–15%; retained as SBRT-specific reference evidence, not as a conventional LKB extrapolation.
+
