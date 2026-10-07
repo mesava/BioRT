@@ -7,6 +7,7 @@ on:
     paths:
       - "BioRT.Web/**"
       - "BioRT.Core/**"
+      - "BioRT.IO/**"
       - "BioRT.App/data/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
