@@ -294,7 +294,7 @@ internal class Program
         };
 
         Console.WriteLine();
-        Console.WriteLine("NTCP — provenance-aware LKB models:");
+        Console.WriteLine("NTCP — provenance-aware runtime-compatible models:");
         Console.WriteLine(
             $"Plan fractionation context: N={plan.Fractions}, " +
             $"nominal target dose/fx={(plan.DosePerFraction > 0 ? $"{plan.DosePerFraction:F3} Gy" : "unknown")}");
