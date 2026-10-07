@@ -126,7 +126,7 @@ public static class PlanAnalysisComparator
     {
         if (baseline is null || candidate is null)
         {
-            if (baseline is null != (candidate is null))
+            if ((baseline is null) != (candidate is null))
                 Add(differences, "dose_grid", baseline is null ? "null" : "present", candidate is null ? "null" : "present", "exact");
 
             return;
@@ -280,7 +280,9 @@ public static class PlanAnalysisComparator
             CompareText(differences, $"{path}.criterion_structure", left[i].CriterionStructureName, right[i].CriterionStructureName, true);
             CompareText(differences, $"{path}.matched_structure", left[i].MatchedStructureName, right[i].MatchedStructureName, true);
             CompareText(differences, $"{path}.raw", left[i].Criterion.Raw, right[i].Criterion.Raw, false);
-            CompareNumber(differences, $"{path}.value", left[i].Value, right[i].Value, options.DoseAbsoluteGy, options.DoseRelative);
+            CompareExact(differences, $"{path}.type", left[i].Criterion.Type, right[i].Criterion.Type);
+            CompareText(differences, $"{path}.operator", left[i].Criterion.Operator, right[i].Criterion.Operator, false);
+            CompareCriterionValue(differences, $"{path}.value", left[i], right[i], options);
             CompareExact(differences, $"{path}.pass", left[i].Pass, right[i].Pass);
         }
     }
@@ -373,7 +375,7 @@ public static class PlanAnalysisComparator
     {
         if (baseline is null || candidate is null)
         {
-            if (baseline is null != (candidate is null))
+            if ((baseline is null) != (candidate is null))
                 Add(differences, "tcp", baseline is null ? "null" : "present", candidate is null ? "null" : "present", "exact");
 
             return;
