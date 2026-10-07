@@ -34,7 +34,7 @@ public class RtPlanReaderTests
                 DicomTag.DoseReferenceSequence,
                 doseReference));
 
-        var file = new DicomFile(dataset);
+        var file = CreateRtPlanFile(dataset);
         var plan = new PlanData();
 
         new RtPlanReader().Read(file, plan);
@@ -43,6 +43,19 @@ public class RtPlanReaderTests
         Assert.Equal(30, plan.Fractions);
         Assert.Equal(2.0, plan.DosePerFraction, precision: 12);
         Assert.Equal(60.0, plan.TotalDose, precision: 12);
+    }
+
+    private static DicomFile CreateRtPlanFile(DicomDataset dataset)
+    {
+        dataset.AddOrUpdate(
+            DicomTag.SOPClassUID,
+            DicomUID.RTPlanStorage);
+
+        dataset.AddOrUpdate(
+            DicomTag.SOPInstanceUID,
+            DicomUID.Generate());
+
+        return new DicomFile(dataset);
     }
 
     [Fact]
@@ -80,7 +93,7 @@ public class RtPlanReaderTests
                 organAtRisk,
                 target));
 
-        var file = new DicomFile(dataset);
+        var file = CreateRtPlanFile(dataset);
         var plan = new PlanData();
 
         new RtPlanReader().Read(file, plan);
