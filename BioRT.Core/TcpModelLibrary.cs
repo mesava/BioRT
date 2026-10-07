@@ -13,6 +13,18 @@ public sealed class TcpModelLibrary
 
     public IReadOnlyList<TcpModelDefinition> Models => _models;
 
+    public TcpModelDefinition? FindById(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+
+        return _models.FirstOrDefault(m =>
+            string.Equals(
+                m.Id,
+                id,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
     public static TcpModelLibrary Load(string jsonPath)
     {
         if (string.IsNullOrWhiteSpace(jsonPath))
