@@ -12,8 +12,13 @@ public sealed record ArchiveBundleEntry(
 /// The reader never writes archive entries to disk. This avoids path traversal
 /// concerns and preserves BioRT's local-browser privacy model.
 ///
-/// Only .dcm and .json entries are returned. Limits are enforced on both entry
-/// count and cumulative uncompressed size to reduce browser zip-bomb risk.
+/// Browser-provided streams are first copied asynchronously into a seekable
+/// MemoryStream because Blazor WebAssembly BrowserFileStream intentionally does
+/// not support synchronous reads, while ZipArchive uses synchronous access to
+/// the central directory.
+///
+/// Only .dcm and .json entries are returned. Limits are enforced on archive
+/// bytes, entry count and cumulative uncompressed size to reduce zip-bomb risk.
 /// </summary>
 public static class ArchiveBundleReader
 {
@@ -21,6 +26,7 @@ public static class ArchiveBundleReader
         Stream zipStream,
         int maxEntries = 100,
         long maxExpandedBytes = 512L * 1024L * 1024L,
+        long maxArchiveBytes = 512L * 1024L * 1024L,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(zipStream);
@@ -31,9 +37,29 @@ public static class ArchiveBundleReader
         if (maxExpandedBytes <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxExpandedBytes));
 
+        if (maxArchiveBytes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxArchiveBytes));
+
+        using MemoryStream? ownedArchiveBuffer =
+            zipStream is MemoryStream
+                ? null
+                : await CopyToSeekableMemoryAsync(
+                    zipStream,
+                    maxArchiveBytes,
+                    cancellationToken);
+
+        Stream archiveStream =
+            ownedArchiveBuffer ?? zipStream;
+
+        if (!archiveStream.CanSeek)
+        {
+            throw new InvalidOperationException(
+                "ZIP input could not be converted to a seekable stream.");
+        }
+
         using var archive =
             new ZipArchive(
-                zipStream,
+                archiveStream,
                 ZipArchiveMode.Read,
                 leaveOpen: true);
 
@@ -115,6 +141,53 @@ public static class ArchiveBundleReader
         }
 
         return result;
+    }
+
+    private static async Task<MemoryStream> CopyToSeekableMemoryAsync(
+        Stream source,
+        long maxArchiveBytes,
+        CancellationToken cancellationToken)
+    {
+        var target = new MemoryStream();
+        byte[] buffer = new byte[64 * 1024];
+        long total = 0;
+
+        try
+        {
+            while (true)
+            {
+                int read =
+                    await source.ReadAsync(
+                        buffer.AsMemory(0, buffer.Length),
+                        cancellationToken);
+
+                if (read == 0)
+                    break;
+
+                checked
+                {
+                    total += read;
+                }
+
+                if (total > maxArchiveBytes)
+                {
+                    throw new InvalidOperationException(
+                        $"ZIP file size exceeds the configured limit of {maxArchiveBytes} bytes.");
+                }
+
+                await target.WriteAsync(
+                    buffer.AsMemory(0, read),
+                    cancellationToken);
+            }
+
+            target.Position = 0;
+            return target;
+        }
+        catch
+        {
+            target.Dispose();
+            throw;
+        }
     }
 
     public static DicomInputFile ToDicomInputFile(
