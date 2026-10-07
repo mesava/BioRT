@@ -59,18 +59,34 @@ public static class ClinicalContextLoader
                 $"Clinical context file not found: {Path.GetFullPath(jsonPath)}",
                 jsonPath);
 
+        return LoadJson(
+            File.ReadAllText(jsonPath));
+    }
+
+    public static ClinicalContext LoadJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException(
+                "Clinical context JSON must not be empty.",
+                nameof(json));
+        }
+
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
 
-        ClinicalContext? context = JsonSerializer.Deserialize<ClinicalContext>(
-            File.ReadAllText(jsonPath),
-            options);
+        ClinicalContext? context =
+            JsonSerializer.Deserialize<ClinicalContext>(
+                json,
+                options);
 
         if (context == null)
+        {
             throw new InvalidOperationException(
                 "Clinical context JSON could not be deserialized.");
+        }
 
         Validate(context);
 
