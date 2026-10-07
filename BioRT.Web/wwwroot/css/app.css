@@ -427,6 +427,8 @@ h3 {
 }
 
 .fingerprint code {
+    display: inline-block;
+    max-width: 100%;
     margin-left: 6px;
     padding: 4px 7px;
     border-radius: 7px;
@@ -434,7 +436,9 @@ h3 {
     background: #eaf4f6;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-weight: 800;
-    letter-spacing: .04em;
+    letter-spacing: .02em;
+    overflow-wrap: anywhere;
+    word-break: break-all;
 }
 
 .analysis-context {
