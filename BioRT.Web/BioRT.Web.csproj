@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BioRT.Core\BioRT.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\BioRT.App\data\ntcp_parameters_v2.json"
+                      Link="Data\ntcp_parameters_v2.json"
+                      LogicalName="BioRT.Web.Data.ntcp_parameters_v2.json" />
+    <EmbeddedResource Include="..\BioRT.App\data\tcp_parameters_v2.json"
+                      Link="Data\tcp_parameters_v2.json"
+                      LogicalName="BioRT.Web.Data.tcp_parameters_v2.json" />
+  </ItemGroup>
+
+</Project>
