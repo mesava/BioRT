@@ -154,6 +154,30 @@ public class TcpDoseResponseModelTests
     }
 
     [Fact]
+    public void ScalarLogistic_AtD50_ReturnsFiftyPercent()
+    {
+        double tcp =
+            TcpDoseResponseModel.CalculateLogisticFromDose(
+                doseGy: 45.1,
+                d50Gy: 45.1,
+                gamma: 0.56);
+
+        Assert.Equal(0.5, tcp, precision: 12);
+    }
+
+    [Fact]
+    public void ScalarPowerOfTwoPoisson_AtD50_ReturnsFiftyPercent()
+    {
+        double tcp =
+            TcpDoseResponseModel.CalculatePoissonPowerOfTwoFromEqd2(
+                eqd2Gy: 84.2,
+                d50Gy: 84.2,
+                gamma: 4.50);
+
+        Assert.Equal(0.5, tcp, precision: 12);
+    }
+
+    [Fact]
     public void InvalidFractionCount_IsRejected()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
