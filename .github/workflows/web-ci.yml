@@ -1,0 +1,51 @@
+name: BioRT Web CI
+
+on:
+  pull_request:
+    paths:
+      - "BioRT.Web/**"
+      - "BioRT.Core/**"
+      - "BioRT.App/data/**"
+      - "BioRT.sln"
+      - ".github/workflows/web-ci.yml"
+      - ".github/workflows/pages.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "BioRT.Web/**"
+      - "BioRT.Core/**"
+      - "BioRT.App/data/**"
+      - "BioRT.sln"
+      - ".github/workflows/web-ci.yml"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore web
+        run: dotnet restore BioRT.Web/BioRT.Web.csproj
+
+      - name: Build web
+        run: dotnet build BioRT.Web/BioRT.Web.csproj -c Release --no-restore
+
+      - name: Publish web
+        run: dotnet publish BioRT.Web/BioRT.Web.csproj -c Release --no-build -o release
+
+      - name: Verify static output
+        run: |
+          test -f release/wwwroot/index.html
+          test -f release/wwwroot/_framework/blazor.webassembly.js
