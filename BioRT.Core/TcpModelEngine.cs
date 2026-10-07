@@ -450,16 +450,21 @@ public sealed class TcpModelEngine
         out double gamma,
         out double alphaBeta)
     {
-        bool ok =
-            TryGetDouble(parameters, "d50_gy", out d50) &&
-            TryGetDouble(parameters, "gamma", out gamma);
-
+        d50 = default;
+        gamma = default;
         alphaBeta = default;
 
-        if (requireAlphaBeta)
-            ok = ok && TryGetDouble(parameters, "alpha_beta_gy", out alphaBeta);
+        bool hasD50 =
+            TryGetDouble(parameters, "d50_gy", out d50);
 
-        return ok;
+        bool hasGamma =
+            TryGetDouble(parameters, "gamma", out gamma);
+
+        bool hasAlphaBeta =
+            !requireAlphaBeta ||
+            TryGetDouble(parameters, "alpha_beta_gy", out alphaBeta);
+
+        return hasD50 && hasGamma && hasAlphaBeta;
     }
 
     private static string? GetContextField(
