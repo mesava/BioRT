@@ -7,6 +7,25 @@ namespace BioRT.Tests;
 public class ClinicalContextTests
 {
     [Fact]
+    public void ExampleClinicalContext_LoadsAndValidates()
+    {
+        string path = Path.Combine(
+            AppContext.BaseDirectory,
+            "data",
+            "clinical_context.example.json");
+
+        Assert.True(File.Exists(path));
+
+        ClinicalContext context = ClinicalContextLoader.Load(path);
+
+        Assert.Equal("0.1.0", context.SchemaVersion);
+        Assert.Equal(68.0, context.Patient.AgeYears!.Value, precision: 12);
+        Assert.Equal("former", context.Patient.SmokingStatus);
+        Assert.Equal("NSCLC", context.Tumor.Diagnosis);
+        Assert.Equal("concurrent", context.Treatment.ChemotherapySequence);
+    }
+
+    [Fact]
     public void Mapper_DerivesAgeAndAppeltAgeCategory()
     {
         var context = new ClinicalContext
