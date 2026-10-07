@@ -100,6 +100,46 @@ public class FractionationCorrectorTests
     }
 
     [Fact]
+    public void EquivalentTotalDose_IsIdentityWhenFractionCountIsUnchanged()
+    {
+        double equivalent =
+            FractionationCorrector.CalculateEquivalentTotalDoseForFractions(
+                totalDoseGy: 45.0,
+                sourceFractions: 5,
+                targetFractions: 5,
+                alphaBetaGy: 10.0);
+
+        Assert.Equal(45.0, equivalent, precision: 12);
+    }
+
+    [Fact]
+    public void EquivalentTotalDose_PreservesLqIsoeffect()
+    {
+        const double totalDose = 36.0;
+        const int sourceFractions = 6;
+        const int targetFractions = 5;
+        const double alphaBeta = 10.0;
+
+        double equivalent =
+            FractionationCorrector.CalculateEquivalentTotalDoseForFractions(
+                totalDose,
+                sourceFractions,
+                targetFractions,
+                alphaBeta);
+
+        double d1 = totalDose / sourceFractions;
+        double d2 = equivalent / targetFractions;
+
+        double sourceEffect =
+            sourceFractions * d1 * (d1 + alphaBeta);
+
+        double targetEffect =
+            targetFractions * d2 * (d2 + alphaBeta);
+
+        Assert.Equal(sourceEffect, targetEffect, precision: 10);
+    }
+
+    [Fact]
     public void InvalidFractionCount_IsRejected()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
