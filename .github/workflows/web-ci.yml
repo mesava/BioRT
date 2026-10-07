@@ -5,6 +5,7 @@ on:
     paths:
       - "BioRT.Web/**"
       - "BioRT.Core/**"
+      - "BioRT.IO/**"
       - "BioRT.App/data/**"
       - "BioRT.sln"
       - ".github/workflows/web-ci.yml"
@@ -15,6 +16,7 @@ on:
     paths:
       - "BioRT.Web/**"
       - "BioRT.Core/**"
+      - "BioRT.IO/**"
       - "BioRT.App/data/**"
       - "BioRT.sln"
       - ".github/workflows/web-ci.yml"
