@@ -10,4 +10,10 @@ public sealed class TcpEvaluationContext
     public string? Histology { get; init; }
     public string? RiskGroup { get; init; }
     public string? Setting { get; init; }
+
+    /// <summary>
+    /// Explicit semantic role of the evaluated target DVH, for example
+    /// prostate_gland. This is not inferred from the ROI name.
+    /// </summary>
+    public string? TargetRole { get; init; }
 }
