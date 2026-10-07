@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "patient": {
     "age_years": 68,
     "smoking_status": "former",
@@ -11,11 +11,13 @@
     "histology": "squamous_cell_carcinoma",
     "stage": "IIIA",
     "location": "superior",
-    "laterality": "right"
+    "laterality": "right",
+    "risk_group": "locally_advanced"
   },
   "treatment": {
     "chemotherapy_sequence": "concurrent",
-    "immunotherapy": false
+    "immunotherapy": false,
+    "setting": "definitive_ebrt"
   },
   "baseline": {
     "xerostomia": "none"
@@ -23,5 +25,6 @@
   "model_overrides": {
     "numeric": {},
     "categorical": {}
-  }
+  },
+  "tcp": {}
 }
