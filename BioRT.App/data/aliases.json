@@ -8,7 +8,6 @@
             "parotid right"
         ]
     },
-
     "submandibular_gland": {
         "aliases": [
             "glnd_submand_l",
@@ -19,7 +18,6 @@
             "submandibular_r"
         ]
     },
-
     "spinal_cord": {
         "aliases": [
             "spinalcord",
@@ -27,17 +25,47 @@
             "cord"
         ]
     },
-
     "larynx": {
         "aliases": [
             "larynx"
         ]
     },
-
     "esophagus": {
         "aliases": [
             "esophagus",
             "oesophagus"
+        ]
+    },
+    "lung_total": {
+        "aliases": [
+            "lungs",
+            "lung_total",
+            "lungs_total",
+            "total_lung",
+            "total_lungs",
+            "bilateral_lung",
+            "bilateral_lungs",
+            "both_lungs"
+        ]
+    },
+    "lung_total_minus_gtv": {
+        "aliases": [
+            "lungs_gtv",
+            "lungs-gtv",
+            "lungs minus gtv",
+            "lungs_minus_gtv",
+            "lung_gtv",
+            "lung-gtv",
+            "lung minus gtv",
+            "lung_minus_gtv",
+            "both_lungs_minus_gtv",
+            "bilateral_lungs_minus_gtv"
+        ]
+    },
+    "lung_ipsilateral": {
+        "aliases": [
+            "ipsilateral_lung",
+            "lung_ipsilateral"
         ]
     }
 }
