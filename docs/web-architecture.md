@@ -54,17 +54,20 @@ Fellow Oak DICOM targets modern .NET / .NET Standard runtimes and has prior brow
 - runtime/reference status;
 - endpoint, model family, equation and PubMed provenance;
 - responsive layout;
-- GitHub Pages deployment workflow.
+- GitHub Pages deployment workflow;
+- local browser selection of one coherent RTPLAN / RTDOSE / RTSTRUCT set;
+- stream-based fo-dicom parsing without uploading the files to a BioRT server;
+- safe rejection of missing or ambiguous multiple RT objects.
 
-No patient DICOM is processed by the public web UI yet.
+At this milestone the browser validates/imports the RT bundle and reports fractionation and RTSTRUCT ROI count. Full DVH / physical metrics / TCP / NTCP are the next web stage.
 
 ## Next implementation stages
 
-### W1 — stream-based DICOM import
+### W1 — stream-based DICOM import — implemented
 
-Refactor `BioRT.IO` so parsing does not require `Directory.GetFiles` or a physical Windows path.
+`BioRT.IO` now contains `DicomBundleImporter` and `DicomInputFile`, so browser and local callers can supply streams instead of physical paths.
 
-Target API shape:
+Current API shape:
 
 ```text
 IReadOnlyCollection<InputFile>
