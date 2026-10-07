@@ -35,7 +35,16 @@ public sealed class TcpModelLibrary
                 $"TCP library not found: {Path.GetFullPath(jsonPath)}",
                 jsonPath);
 
-        using var doc = JsonDocument.Parse(File.ReadAllText(jsonPath));
+        return LoadJson(
+            File.ReadAllText(jsonPath));
+    }
+
+    public static TcpModelLibrary LoadJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new ArgumentException("TCP library JSON must not be empty.", nameof(json));
+
+        using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
         var models = new List<TcpModelDefinition>();

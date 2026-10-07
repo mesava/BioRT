@@ -1,6 +1,8 @@
 @page "/"
 @inject ModelCatalogService Catalog
 @inject DicomBundleImporter DicomImporter
+@inject PlanAnalysisService AnalysisService
+@inject AnalysisResourceService AnalysisResources
 
 <PageTitle>BioRT — TCP / NTCP из DICOM</PageTitle>
 
@@ -20,9 +22,9 @@
 
         <div class="notice">
             <strong>Режим разработки.</strong>
-            Сайт уже читает RTPLAN / RTDOSE / RTSTRUCT локально в браузере
-            и проверяет связность набора. Полный DVH → TCP/NTCP расчёт
-            подключается следующим этапом.
+            Сайт уже выполняет локальную цепочку DICOM → DVH → физические метрики
+            → clinical criteria → NTCP/TCP в браузере. Следующий этап —
+            независимое сравнение web и console на одном деидентифицированном плане.
         </div>
     </div>
 
@@ -56,10 +58,11 @@
     <div class="calculator-card">
         <label class="dropzone">
             <span class="drop-icon">↥</span>
-            <strong>Выберите RTPLAN / RTDOSE / RTSTRUCT</strong>
+            <strong>Выберите RTPLAN / RTDOSE / RTSTRUCT и JSON-контекст</strong>
             <span>
                 Файлы читаются непосредственно в вашем браузере.
                 BioRT не отправляет выбранный DICOM на сервер.
+                Monaco criteria JSON и clinical_context.json можно выбрать вместе с DICOM.
             </span>
 
             <InputFile class="file-input"
@@ -68,7 +71,8 @@
                        disabled="@IsImporting" />
 
             <span class="file-hint">
-                Пока выбирайте один согласованный набор: 1 RTPLAN + 1 RTDOSE + 1 RTSTRUCT.
+                Один согласованный набор: 1 RTPLAN + 1 RTDOSE + 1 RTSTRUCT.
+                Criteria JSON рекомендуется; clinical_context.json — опционально.
             </span>
         </label>
 
@@ -125,6 +129,199 @@
                         <summary>Предупреждения: @ImportedDicom.Warnings.Count</summary>
                         <ul>
                             @foreach (string warning in ImportedDicom.Warnings)
+                            {
+                                <li>@warning</li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </div>
+        }
+
+        @if (AnalysisResult != null)
+        {
+            <div class="analysis-summary">
+                <div class="analysis-summary-top">
+                    <div>
+                        <p class="eyebrow">Результат расчёта</p>
+                        <h3>Полный анализ выполнен локально</h3>
+                    </div>
+                    <div class="analysis-context">
+                        <span>@CriteriaStatus</span>
+                        <span>@ClinicalContextStatus</span>
+                    </div>
+                </div>
+
+                <div class="import-stats">
+                    <article>
+                        <span class="metric-value small">@AnalysisResult.Structures.Count</span>
+                        <span class="metric-label">DVH структур</span>
+                    </article>
+                    <article>
+                        <span class="metric-value small">@AnalysisResult.ClinicalCriteria.Count</span>
+                        <span class="metric-label">критериев</span>
+                    </article>
+                    <article>
+                        <span class="metric-value small">@AnalysisResult.Ntcp.Count</span>
+                        <span class="metric-label">NTCP записей</span>
+                    </article>
+                </div>
+
+                @if (AnalysisResult.PtvMetrics.Count > 0)
+                {
+                    <section class="result-block">
+                        <h4>PTV / target metrics</h4>
+                        <div class="table-scroll">
+                            <table class="result-table">
+                                <thead>
+                                    <tr>
+                                        <th>Structure</th>
+                                        <th>Volume, cm³</th>
+                                        <th>Rx, Gy</th>
+                                        <th>D2</th>
+                                        <th>D98</th>
+                                        <th>D95</th>
+                                        <th>D50</th>
+                                        <th>HI</th>
+                                        <th>CI</th>
+                                        <th>GI</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ptv in AnalysisResult.PtvMetrics)
+                                    {
+                                        <tr>
+                                            <td>@ptv.MatchedStructureName</td>
+                                            <td>@ptv.VolumeCc.ToString("F2")</td>
+                                            <td>@ptv.PrescriptionDoseGy.ToString("F2")</td>
+                                            <td>@ptv.D2Gy.ToString("F2")</td>
+                                            <td>@ptv.D98Gy.ToString("F2")</td>
+                                            <td>@ptv.D95Gy.ToString("F2")</td>
+                                            <td>@ptv.D50Gy.ToString("F2")</td>
+                                            <td>@FormatMetric(ptv.Hi, 3)</td>
+                                            <td>@FormatMetric(ptv.Ci, 3)</td>
+                                            <td>@FormatMetric(ptv.Gi, 3)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                }
+
+                @if (AnalysisResult.ClinicalCriteria.Count > 0)
+                {
+                    <section class="result-block">
+                        <h4>Clinical criteria</h4>
+                        <div class="table-scroll">
+                            <table class="result-table">
+                                <thead>
+                                    <tr>
+                                        <th>Structure</th>
+                                        <th>Criterion</th>
+                                        <th>Value</th>
+                                        <th>Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in AnalysisResult.ClinicalCriteria)
+                                    {
+                                        <tr>
+                                            <td>@item.MatchedStructureName</td>
+                                            <td>@item.Criterion.Raw</td>
+                                            <td>@item.Value.ToString("F2")</td>
+                                            <td>
+                                                <span class="criterion-status @(item.Pass ? "pass" : "fail")">
+                                                    @(item.Pass ? "PASS" : "FAIL")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                }
+
+                @if (AnalysisResult.Ntcp.Count > 0)
+                {
+                    <section class="result-block">
+                        <h4>NTCP</h4>
+                        <div class="bio-result-grid">
+                            @foreach (var item in AnalysisResult.Ntcp)
+                            {
+                                <article class="bio-result-card">
+                                    <div class="model-card-top">
+                                        <span class="domain-badge">NTCP</span>
+                                        <span class="status-badge @(item.Result.Status == NtcpEvaluationStatus.Calculated ? "enabled" : "reference")">
+                                            @item.Result.Status
+                                        </span>
+                                    </div>
+                                    <strong>@item.Result.ModelId</strong>
+                                    @if (!string.IsNullOrWhiteSpace(item.StructureName))
+                                    {
+                                        <p>@item.StructureName → @item.CanonicalStructure</p>
+                                    }
+                                    <p>@item.Result.EndpointName</p>
+                                    <div class="bio-probability">@FormatProbability(item.Result.Probability)</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Result.Pmid))
+                                    {
+                                        <a class="source-link"
+                                           href="@($"https://pubmed.ncbi.nlm.nih.gov/{item.Result.Pmid}/")"
+                                           target="_blank"
+                                           rel="noreferrer">
+                                            PMID @item.Result.Pmid ↗
+                                        </a>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (AnalysisResult.Tcp != null)
+                {
+                    <section class="result-block">
+                        <h4>TCP</h4>
+                        <article class="bio-result-card tcp-card">
+                            <div class="model-card-top">
+                                <span class="domain-badge">TCP</span>
+                                <span class="status-badge @(AnalysisResult.Tcp.Result.Status == TcpEvaluationStatus.Calculated ? "enabled" : "reference")">
+                                    @AnalysisResult.Tcp.Result.Status
+                                </span>
+                            </div>
+                            <strong>@AnalysisResult.Tcp.Result.ModelId</strong>
+                            <p>@AnalysisResult.Tcp.Result.EndpointName</p>
+                            <div class="bio-probability">@FormatProbability(AnalysisResult.Tcp.Result.Probability)</div>
+                            @if (!string.IsNullOrWhiteSpace(AnalysisResult.Tcp.TargetStructureName))
+                            {
+                                <p>
+                                    Target: @AnalysisResult.Tcp.TargetStructureName
+                                    @if (AnalysisResult.Tcp.TargetVolumeCc is double tcpVolume)
+                                    {
+                                        <span> · @tcpVolume.ToString("F2") cm³</span>
+                                    }
+                                </p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(AnalysisResult.Tcp.Result.Pmid))
+                            {
+                                <a class="source-link"
+                                   href="@($"https://pubmed.ncbi.nlm.nih.gov/{AnalysisResult.Tcp.Result.Pmid}/")"
+                                   target="_blank"
+                                   rel="noreferrer">
+                                    PMID @AnalysisResult.Tcp.Result.Pmid ↗
+                                </a>
+                            }
+                        </article>
+                    </section>
+                }
+
+                @if (AnalysisResult.Warnings.Count > 0)
+                {
+                    <details class="import-warnings">
+                        <summary>Предупреждения анализа: @AnalysisResult.Warnings.Count</summary>
+                        <ul>
+                            @foreach (string warning in AnalysisResult.Warnings)
                             {
                                 <li>@warning</li>
                             }
@@ -256,8 +453,14 @@
     private const long MaxBrowserFileSize =
         512L * 1024L * 1024L;
 
+    private const long MaxJsonFileSize =
+        5L * 1024L * 1024L;
+
     private DicomImportResult? ImportedDicom;
+    private PlanAnalysisResult? AnalysisResult;
     private string? ImportError;
+    private string CriteriaStatus = "Criteria JSON: не найден";
+    private string ClinicalContextStatus = "Clinical context: не задан";
     private bool IsImporting;
 
     private IReadOnlyList<CatalogModel> NtcpModels = Array.Empty<CatalogModel>();
@@ -290,7 +493,10 @@
         InputFileChangeEventArgs args)
     {
         ImportedDicom = null;
+        AnalysisResult = null;
         ImportError = null;
+        CriteriaStatus = "Criteria JSON: не найден";
+        ClinicalContextStatus = "Clinical context: не задан";
         IsImporting = true;
 
         try
@@ -304,8 +510,24 @@
                 return;
             }
 
-            DicomInputFile[] inputs =
+            IBrowserFile[] jsonFiles =
                 files
+                    .Where(file =>
+                        file.Name.EndsWith(
+                            ".json",
+                            StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+            IBrowserFile[] dicomFiles =
+                files
+                    .Where(file =>
+                        !file.Name.EndsWith(
+                            ".json",
+                            StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+            DicomInputFile[] inputs =
+                dicomFiles
                     .Select(file =>
                         BrowserDicomInputFileFactory.Create(
                             file,
@@ -314,9 +536,83 @@
 
             ImportedDicom =
                 await DicomImporter.LoadAsync(inputs);
+
+            IReadOnlyList<DoseCriterion> criteria =
+                Array.Empty<DoseCriterion>();
+
+            ClinicalContext? clinicalContext = null;
+
+            var criteriaCandidates =
+                new List<(string Name, IReadOnlyList<DoseCriterion> Criteria)>();
+
+            foreach (IBrowserFile jsonFile in jsonFiles)
+            {
+                string json =
+                    await ReadBrowserTextFile(jsonFile);
+
+                if (string.Equals(
+                        jsonFile.Name,
+                        "clinical_context.json",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    clinicalContext =
+                        ClinicalContextLoader.LoadJson(json);
+
+                    ClinicalContextStatus =
+                        "Clinical context: загружен";
+
+                    continue;
+                }
+
+                try
+                {
+                    IReadOnlyList<DoseCriterion> parsed =
+                        MonacoCriteriaParser.ParseJson(json);
+
+                    criteriaCandidates.Add(
+                        (jsonFile.Name, parsed));
+                }
+                catch
+                {
+                    // The selected JSON is not a Monaco criteria file.
+                }
+            }
+
+            if (criteriaCandidates.Count > 1)
+            {
+                throw new InvalidOperationException(
+                    "Найдено несколько JSON с prescriptions. Выберите один criteria JSON.");
+            }
+
+            if (criteriaCandidates.Count == 1)
+            {
+                criteria =
+                    criteriaCandidates[0].Criteria;
+
+                CriteriaStatus =
+                    $"Criteria JSON: {criteriaCandidates[0].Name} · {criteria.Count} критериев";
+            }
+
+            AnalysisResult =
+                AnalysisService.Analyze(
+                    new PlanAnalysisRequest
+                    {
+                        Plan = ImportedDicom.Plan,
+                        StructureNames = ImportedDicom.StructureNames,
+                        Contours = ImportedDicom.Contours,
+                        Criteria = criteria,
+                        ClinicalContext = clinicalContext,
+                        StructureMatcher =
+                            AnalysisResources.StructureMatcher,
+                        NtcpLibrary =
+                            AnalysisResources.NtcpLibrary,
+                        TcpLibrary =
+                            AnalysisResources.TcpLibrary
+                    });
         }
         catch (Exception ex)
         {
+            AnalysisResult = null;
             ImportError = ex.Message;
         }
         finally
@@ -324,6 +620,30 @@
             IsImporting = false;
         }
     }
+
+    private static async Task<string> ReadBrowserTextFile(
+        IBrowserFile file)
+    {
+        await using Stream stream =
+            file.OpenReadStream(MaxJsonFileSize);
+
+        using var reader =
+            new StreamReader(stream);
+
+        return await reader.ReadToEndAsync();
+    }
+
+    private static string FormatProbability(double? probability)
+        => probability is double value
+            ? $"{value * 100.0:F2}%"
+            : "n/a";
+
+    private static string FormatMetric(
+        double value,
+        int digits)
+        => double.IsFinite(value)
+            ? value.ToString($"F{digits}")
+            : "n/a";
 
     private void SetFilter(string filter)
         => _filter = filter;

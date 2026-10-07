@@ -17,6 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\BioRT.App\data\aliases.json"
+                      Link="Data\aliases.json"
+                      LogicalName="BioRT.Web.Data.aliases.json" />
     <EmbeddedResource Include="..\BioRT.App\data\ntcp_parameters_v2.json"
                       Link="Data\ntcp_parameters_v2.json"
                       LogicalName="BioRT.Web.Data.ntcp_parameters_v2.json" />

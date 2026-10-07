@@ -1,86 +1,111 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace BioRT.Core.Matching;
 
 public sealed class StructureMatcher
 {
-    private readonly Dictionary<string, string> _aliasMap = new();
+    private readonly Dictionary<string, string> _aliasMap =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public StructureMatcher(string aliasesJsonPath)
+        : this(ReadJsonFile(aliasesJsonPath))
     {
-        Console.WriteLine("[StructureMatcher] Initializing");
-        Console.WriteLine($"  Path: {Path.GetFullPath(aliasesJsonPath)}");
+    }
 
-        if (!File.Exists(aliasesJsonPath))
-            throw new FileNotFoundException(
-                $"aliases.json not found: {aliasesJsonPath}");
-
-        string jsonText = File.ReadAllText(aliasesJsonPath);
-        Console.WriteLine($"  File size: {jsonText.Length} chars");
-
-        using var doc = JsonDocument.Parse(jsonText);
-        var root = doc.RootElement;
-
-        Console.WriteLine($"  Root kind: {root.ValueKind}");
-
+    private StructureMatcher(JsonElement root)
+    {
         if (root.ValueKind != JsonValueKind.Object)
+        {
             throw new InvalidOperationException(
                 "aliases.json root must be a JSON object");
+        }
 
         foreach (var organ in root.EnumerateObject())
         {
-            Console.WriteLine($"  Organ key: {organ.Name}");
-
-            if (!organ.Value.TryGetProperty("aliases", out var aliases))
+            if (!organ.Value.TryGetProperty("aliases", out var aliases) ||
+                aliases.ValueKind != JsonValueKind.Array)
             {
-                Console.WriteLine("    ⚠ no 'aliases' property");
-                continue;
-            }
-
-            Console.WriteLine($"    aliases kind: {aliases.ValueKind}");
-
-            if (aliases.ValueKind != JsonValueKind.Array)
-            {
-                Console.WriteLine("    ⚠ 'aliases' is not array");
                 continue;
             }
 
             string canonical = organ.Name;
-            string canonicalNorm = Normalize(canonical);
 
-            _aliasMap[canonicalNorm] = canonical;
-            Console.WriteLine($"    + canonical: {canonicalNorm}");
+            _aliasMap[Normalize(canonical)] = canonical;
 
-            foreach (var a in aliases.EnumerateArray())
+            foreach (var aliasNode in aliases.EnumerateArray())
             {
-                if (a.ValueKind != JsonValueKind.String)
+                if (aliasNode.ValueKind != JsonValueKind.String)
                     continue;
 
-                string alias = a.GetString()!;
-                string norm = Normalize(alias);
+                string? alias = aliasNode.GetString();
 
-                _aliasMap[norm] = canonical;
-                Console.WriteLine($"    + alias: {norm} -> {canonical}");
+                if (string.IsNullOrWhiteSpace(alias))
+                    continue;
+
+                _aliasMap[Normalize(alias)] = canonical;
             }
         }
 
-        Console.WriteLine($"[StructureMatcher] Loaded {_aliasMap.Count} aliases");
-
         if (_aliasMap.Count == 0)
+        {
             throw new InvalidOperationException(
                 "aliases.json contains no valid alias mappings");
+        }
+    }
+
+    public static StructureMatcher FromJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException(
+                "Alias JSON must not be empty.",
+                nameof(json));
+        }
+
+        using var document = JsonDocument.Parse(json);
+        return new StructureMatcher(
+            document.RootElement.Clone());
     }
 
     public string? Match(string structureName)
     {
+        if (string.IsNullOrWhiteSpace(structureName))
+            return null;
+
         string key = Normalize(structureName);
-        return _aliasMap.TryGetValue(key, out var canonical)
+
+        return _aliasMap.TryGetValue(
+            key,
+            out string? canonical)
             ? canonical
             : null;
     }
 
-    private static string Normalize(string s)
-        => s
+    private static JsonElement ReadJsonFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException(
+                "Alias JSON path must not be empty.",
+                nameof(path));
+        }
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"aliases.json not found: {path}",
+                path);
+        }
+
+        using var document =
+            JsonDocument.Parse(
+                File.ReadAllText(path));
+
+        return document.RootElement.Clone();
+    }
+
+    private static string Normalize(string value)
+        => value
             .ToLowerInvariant()
             .Replace("_", "")
             .Replace("-", "")

@@ -1,3 +1,4 @@
+using BioRT.Core.Analysis;
 using BioRT.IO.Dicom;
 using FellowOakDicom;
 using BioRT.Web;
@@ -12,7 +13,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddFellowOakDicom();
 builder.Services.AddSingleton<ModelCatalogService>();
+builder.Services.AddSingleton<AnalysisResourceService>();
 builder.Services.AddSingleton<DicomBundleImporter>();
+builder.Services.AddSingleton<PlanAnalysisService>();
 
 var host = builder.Build();
 

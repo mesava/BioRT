@@ -21,7 +21,16 @@ public sealed class NtcpModelLibrary
         if (!File.Exists(jsonPath))
             throw new FileNotFoundException($"NTCP library not found: {Path.GetFullPath(jsonPath)}", jsonPath);
 
-        using var doc = JsonDocument.Parse(File.ReadAllText(jsonPath));
+        return LoadJson(
+            File.ReadAllText(jsonPath));
+    }
+
+    public static NtcpModelLibrary LoadJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new ArgumentException("NTCP library JSON must not be empty.", nameof(json));
+
+        using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
         var models = new List<NtcpModelDefinition>();
