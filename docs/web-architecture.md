@@ -93,7 +93,7 @@ PlanAnalysisRequest
   -> PlanAnalysisResult
 ```
 
-The result object should contain, not print:
+The shared `PlanAnalysisService` now returns structured results rather than printing:
 - structure volume;
 - D2 / D98 / D95 / D50 / HI / CI / GI;
 - dose criteria and PASS/FAIL;
@@ -101,7 +101,7 @@ The result object should contain, not print:
 - TCP results;
 - warnings / provenance.
 
-Console output and web rendering should both consume the same result object.
+BioRT.Web already consumes this service. BioRT.App now uses the same service as its console/commissioning renderer, so both front ends share one analysis orchestration path.
 
 ### W3 — browser file workflow
 
