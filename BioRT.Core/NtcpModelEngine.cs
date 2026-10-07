@@ -33,10 +33,16 @@ public sealed class NtcpModelEngine
                 warnings: warnings);
         }
 
+        NtcpEvaluationResult? applicabilityFailure =
+            CheckApplicability(model, context, warnings);
+
+        if (applicabilityFailure != null)
+            return applicabilityFailure;
+
         return model.EquationId switch
         {
             "lkb_probit" => EvaluateLkb(model, dvh, context, warnings),
-            "logistic" => EvaluateLogistic(model, context, warnings),
+            "logistic" => EvaluateLogistic(model, dvh, context, warnings),
             _ => Build(
                 model,
                 NtcpEvaluationStatus.Unsupported,
@@ -71,41 +77,6 @@ public sealed class NtcpModelEngine
                 NtcpEvaluationStatus.MissingInputs,
                 warnings: warnings,
                 missingInputs: new[] { "structure_dvh" });
-        }
-
-        if (model.Implementation?.MinimumPrescriptionFractionSizeGy is double minFx ||
-            model.Implementation?.MaximumPrescriptionFractionSizeGy is double maxFx)
-        {
-            if (context.DosePerFractionGy is not double actualFx)
-            {
-                warnings.Add(
-                    "Prescription dose per fraction is required to verify this model's applicability domain.");
-
-                return Build(
-                    model,
-                    NtcpEvaluationStatus.MissingInputs,
-                    warnings: warnings,
-                    missingInputs: new[] { "dose_per_fraction_gy" });
-            }
-
-            if ((model.Implementation.MinimumPrescriptionFractionSizeGy is double minimum &&
-                 actualFx < minimum - FractionSizeToleranceGy) ||
-                (model.Implementation.MaximumPrescriptionFractionSizeGy is double maximum &&
-                 actualFx > maximum + FractionSizeToleranceGy))
-            {
-                string range =
-                    $"{model.Implementation.MinimumPrescriptionFractionSizeGy?.ToString("F2") ?? "-inf"}" +
-                    " to " +
-                    $"{model.Implementation.MaximumPrescriptionFractionSizeGy?.ToString("F2") ?? "+inf"} Gy/fx";
-
-                warnings.Add(
-                    $"Prescription fraction size {actualFx:F2} Gy/fx is outside the validated/configured model range ({range}).");
-
-                return Build(
-                    model,
-                    NtcpEvaluationStatus.NotApplicable,
-                    warnings: warnings);
-            }
         }
 
         var p = model.Parameters;
@@ -385,6 +356,7 @@ public sealed class NtcpModelEngine
 
     private static NtcpEvaluationResult EvaluateLogistic(
         NtcpModelDefinition model,
+        StructureDVH? dvh,
         NtcpEvaluationContext context,
         List<string> warnings)
     {
@@ -423,7 +395,18 @@ public sealed class NtcpModelEngine
             if (predictor.TryGetProperty("coefficient", out var coefficientNode) &&
                 coefficientNode.ValueKind == JsonValueKind.Number)
             {
-                if (!context.NumericPredictors.TryGetValue(name, out double value))
+                double value;
+
+                if (TryResolveAutomaticPredictor(
+                        predictor,
+                        dvh,
+                        out value))
+                {
+                    linearPredictor += coefficientNode.GetDouble() * value;
+                    continue;
+                }
+
+                if (!context.NumericPredictors.TryGetValue(name, out value))
                 {
                     missing.Add(name);
                     continue;
@@ -482,6 +465,93 @@ public sealed class NtcpModelEngine
             NtcpEvaluationStatus.Calculated,
             probability,
             warnings: warnings);
+    }
+
+    private static NtcpEvaluationResult? CheckApplicability(
+        NtcpModelDefinition model,
+        NtcpEvaluationContext context,
+        List<string> warnings)
+    {
+        if (model.Implementation?.MinimumPrescriptionFractionSizeGy is not double &&
+            model.Implementation?.MaximumPrescriptionFractionSizeGy is not double)
+        {
+            return null;
+        }
+
+        if (context.DosePerFractionGy is not double actualFx)
+        {
+            warnings.Add(
+                "Prescription dose per fraction is required to verify this model's applicability domain.");
+
+            return Build(
+                model,
+                NtcpEvaluationStatus.MissingInputs,
+                warnings: warnings,
+                missingInputs: new[] { "dose_per_fraction_gy" });
+        }
+
+        if ((model.Implementation.MinimumPrescriptionFractionSizeGy is double minimum &&
+             actualFx < minimum - FractionSizeToleranceGy) ||
+            (model.Implementation.MaximumPrescriptionFractionSizeGy is double maximum &&
+             actualFx > maximum + FractionSizeToleranceGy))
+        {
+            string range =
+                $"{model.Implementation.MinimumPrescriptionFractionSizeGy?.ToString("F2") ?? "-inf"}" +
+                " to " +
+                $"{model.Implementation.MaximumPrescriptionFractionSizeGy?.ToString("F2") ?? "+inf"} Gy/fx";
+
+            warnings.Add(
+                $"Prescription fraction size {actualFx:F2} Gy/fx is outside the validated/configured model range ({range}).");
+
+            return Build(
+                model,
+                NtcpEvaluationStatus.NotApplicable,
+                warnings: warnings);
+        }
+
+        return null;
+    }
+
+    private static bool TryResolveAutomaticPredictor(
+        JsonElement predictor,
+        StructureDVH? dvh,
+        out double value)
+    {
+        value = default;
+
+        if (!predictor.TryGetProperty("auto_source", out var sourceNode) ||
+            sourceNode.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        string? source = sourceNode.GetString();
+
+        if (string.Equals(
+                source,
+                "dvh_mean_dose_gy",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (dvh == null)
+                return false;
+
+            value = dvh.MeanDose;
+            return true;
+        }
+
+        if (string.Equals(
+                source,
+                "dvh_max_dose_gy",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (dvh == null)
+                return false;
+
+            value = dvh.MaxDose;
+            return true;
+        }
+
+        return false;
     }
 
     private static void AddFractionationContextWarning(
