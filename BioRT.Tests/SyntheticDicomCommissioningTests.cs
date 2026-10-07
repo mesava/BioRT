@@ -247,7 +247,7 @@ public class SyntheticDicomCommissioningTests
         dataset.Add(DicomTag.PixelRepresentation, (ushort)0);
 
         DicomPixelData pixelData =
-            DicomPixelData.CreateNew(dataset);
+            DicomPixelData.Create(dataset, true);
 
         ushort rawDose = 6000;
         byte[] frame = new byte[2 * 2 * sizeof(ushort)];
