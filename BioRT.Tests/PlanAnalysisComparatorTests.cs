@@ -87,6 +87,27 @@ public class PlanAnalysisComparatorTests
     }
 
     [Fact]
+    public void Comparator_UsesDvhPercentToleranceForVxxPercentCriteria()
+    {
+        var options = new PlanAnalysisToleranceOptions
+        {
+            DoseAbsoluteGy = 1e-12,
+            DoseRelative = 0.0,
+            DvhVolumeAbsolutePercent = 1e-3
+        };
+
+        PlanAnalysisComparisonResult comparison =
+            PlanAnalysisComparator.Compare(
+                CreatePlan("SYNTHETIC"),
+                CreateResultWithVxxCriterion(30.0),
+                CreatePlan("SYNTHETIC"),
+                CreateResultWithVxxCriterion(30.0005),
+                options);
+
+        Assert.True(comparison.IsMatch);
+    }
+
+    [Fact]
     public void Comparator_DefaultToleranceIsNumericalNotClinical()
     {
         var options = new PlanAnalysisToleranceOptions();
@@ -117,6 +138,52 @@ public class PlanAnalysisComparatorTests
                 OriginZ = 0.0,
                 ZPositions = [0.0]
             }
+        };
+    }
+
+    private static PlanAnalysisResult CreateResultWithVxxCriterion(double value)
+    {
+        return new PlanAnalysisResult
+        {
+            Structures =
+            [
+                new StructureAnalysisResult
+                {
+                    Name = "Lungs-GTV",
+                    VolumeCc = 1000.0,
+                    Dvh = new StructureDVH
+                    {
+                        Name = "Lungs-GTV",
+                        MeanDose = 10.0,
+                        MaxDose = 20.0,
+                        Dose = [0.0, 20.0],
+                        Volume = [100.0, 0.0]
+                    }
+                }
+            ],
+            PtvMetrics = Array.Empty<PtvAnalysisResult>(),
+            ClinicalCriteria =
+            [
+                new ClinicalCriterionEvaluation
+                {
+                    CriterionStructureName = "Lungs-GTV",
+                    MatchedStructureName = "Lungs-GTV",
+                    Criterion = new DoseCriterion
+                    {
+                        StructureName = "Lungs-GTV",
+                        Type = CriterionType.VxxGyPercent,
+                        DoseGy = 20.0,
+                        Operator = "<=",
+                        Limit = 35.0,
+                        Raw = "V20Gy <= 35 %"
+                    },
+                    Value = value,
+                    Pass = true
+                }
+            ],
+            Ntcp = Array.Empty<NtcpAnalysisResult>(),
+            Tcp = null,
+            Warnings = Array.Empty<string>()
         };
     }
 
