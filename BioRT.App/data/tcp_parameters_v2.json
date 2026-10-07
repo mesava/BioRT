@@ -29,8 +29,7 @@
       "equation_id": "linear_poisson_eqd2_dvh",
       "disease": {
         "diagnosis": "prostate_cancer",
-        "setting": "definitive_ebrt",
-        "risk_group": "intermediate_or_high"
+        "setting": "definitive_ebrt"
       },
       "target": {
         "canonical_structure": "prostate_gland",
@@ -87,7 +86,7 @@
         "doi": "10.1186/s13014-020-01683-4"
       },
       "status": "reference_candidate",
-      "implementation_notes": "Source-specific DVH model for localized intermediate/high-risk prostate cancer. Do not substitute a generic PTV DVH for the CT-defined prostate-gland target.",
+      "implementation_notes": "Source-specific DVH model for localized intermediate/high-risk prostate cancer. Do not substitute a generic PTV DVH for the CT-defined prostate-gland target. The source cohort contained both intermediate- and high-risk patients, but the TCP fit was not stratified into separate risk-group parameter sets.",
       "implementation": {
         "input_mode": "target_dvh",
         "runtime_enabled": true,
@@ -107,8 +106,7 @@
       "equation_id": "linear_poisson_eqd2_dvh",
       "disease": {
         "diagnosis": "prostate_cancer",
-        "setting": "definitive_ebrt",
-        "risk_group": "intermediate_or_high"
+        "setting": "definitive_ebrt"
       },
       "target": {
         "canonical_structure": "prostate_gland",
@@ -148,7 +146,7 @@
         "doi": "10.1186/s13014-020-01683-4"
       },
       "status": "context_specific_reference",
-      "implementation_notes": "Five-year refit from the same cohort. The fitted alpha/beta confidence interval was undefined, so absolute-risk interpretation requires caution.",
+      "implementation_notes": "Five-year refit from the same cohort. The fitted alpha/beta confidence interval was undefined, so absolute-risk interpretation requires caution. The source cohort contained both intermediate- and high-risk patients, but the TCP fit was not stratified into separate risk-group parameter sets.",
       "implementation": {
         "input_mode": "target_dvh",
         "runtime_enabled": true,
