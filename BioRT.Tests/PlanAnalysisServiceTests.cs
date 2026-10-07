@@ -43,6 +43,60 @@ public class PlanAnalysisServiceTests
     }
 
     [Fact]
+    public void MonacoCriteriaParser_HandlesRealisticMonacoAnnotationsAndCmQuestionMark()
+    {
+        const string json = """
+        {
+          "prescriptions": [
+            {
+              "prescription": {
+                "structureName": "PTV",
+                "doseGoals": [
+                  { "doseGoal": "D2% <= 64.2 Gy (+1.8 Gy)" },
+                  { "doseGoal": "V58.8Gy >= 98 % (-3 %)" }
+                ]
+              }
+            },
+            {
+              "prescription": {
+                "structureName": "Lens_L",
+                "doseGoals": [
+                  { "doseGoal": "V20Gy <= 65 cm?" }
+                ]
+              }
+            }
+          ]
+        }
+        """;
+
+        IReadOnlyList<DoseCriterion> criteria =
+            MonacoCriteriaParser.ParseJson(json);
+
+        Assert.Equal(3, criteria.Count);
+
+        Assert.Contains(
+            criteria,
+            c => c.Type == CriterionType.DxxPercent &&
+                 c.DxPercent == 2.0 &&
+                 c.Operator == "<=" &&
+                 c.Limit == 64.2);
+
+        Assert.Contains(
+            criteria,
+            c => c.Type == CriterionType.VxxGyPercent &&
+                 c.DoseGy == 58.8 &&
+                 c.Operator == ">=" &&
+                 c.Limit == 98.0);
+
+        Assert.Contains(
+            criteria,
+            c => c.Type == CriterionType.VxxGyCc &&
+                 c.DoseGy == 20.0 &&
+                 c.Operator == "<=" &&
+                 c.Limit == 65.0);
+    }
+
+    [Fact]
     public void AnalysisService_PreservesPtvAndClinicalCriteriaCalculations()
     {
         var dose = new DoseVolume
