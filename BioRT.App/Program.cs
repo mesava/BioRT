@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Forms;
 
+using BioRT.Core.Analysis;
 using BioRT.Core.DVH;
 using BioRT.Core.Models;
 using BioRT.Core.Radiobiology;
@@ -83,27 +84,13 @@ internal class Program
             return;
         }
 
-        var criteriaJson = JsonDocument.Parse(File.ReadAllText(criteriaJsonPath));
-        var criteria = new List<DoseCriterion>();
+        IReadOnlyList<DoseCriterion> criteria =
+            MonacoCriteriaParser.ParseJson(
+                File.ReadAllText(criteriaJsonPath));
 
-        foreach (var p in criteriaJson.RootElement
-                     .GetProperty("prescriptions")
-                     .EnumerateArray())
-        {
-            var presc = p.GetProperty("prescription");
-            string structureName = presc.GetProperty("structureName").GetString()!;
-
-            foreach (var dg in presc.GetProperty("doseGoals").EnumerateArray())
-            {
-                var c = DoseCriterionParser.Parse(
-                    structureName,
-                    dg.GetProperty("doseGoal").GetString()!);
-
-                if (c != null)
-                    criteria.Add(c);
-            }
-        }
-
+        Console.WriteLine(
+            $"Criteria JSON: {Path.GetFileName(criteriaJsonPath)} ({criteria.Count} parsed criteria)");
+        Console.WriteLine();
         // ================= OPTIONAL CLINICAL CONTEXT =================
 
         ClinicalContext? clinicalContext = null;
@@ -138,21 +125,6 @@ internal class Program
         }
 
         Console.WriteLine();
-        // ================= IDENTIFY PTVs =================
-
-        var ptvRx = new Dictionary<string, double>();
-
-        foreach (var g in criteria.GroupBy(c => c.StructureName))
-        {
-            var d50 = g.FirstOrDefault(c =>
-                c.Type == CriterionType.DxxPercent &&
-                Math.Abs(c.DxPercent!.Value - 50.0) < 0.5 &&
-                c.Operator == ">=");
-
-            if (d50 != null)
-                ptvRx[g.Key] = d50.Limit;
-        }
-
         // ================= LOAD RTSTRUCT =================
 
         var structPath = Directory.GetFiles(path, "*", SearchOption.AllDirectories)
@@ -167,127 +139,7 @@ internal class Program
         var roiNames = structReader.ReadStructureNames(structDicom);
         var contours = structReader.ReadContours(structDicom);
 
-        // ================= DVH + VOLUMES =================
-
-        plan.DVHs.Clear();
-        var structureVolumesCc = new Dictionary<string, double>();
-        var structureMasks = new Dictionary<string, StructureMask>();
-
-        double voxelVolumeCc =
-            plan.Dose.SpacingX *
-            plan.Dose.SpacingY *
-            plan.Dose.SpacingZ / 1000.0;
-
-        foreach (var group in criteria.GroupBy(c => c.StructureName))
-        {
-            string name = group.Key;
-
-            if (name.StartsWith("PTV") && !ptvRx.ContainsKey(name))
-                continue;
-
-            var match = roiNames.FirstOrDefault(r =>
-                r.Value.Contains(name, StringComparison.OrdinalIgnoreCase) ||
-                name.Contains(r.Value, StringComparison.OrdinalIgnoreCase));
-
-            if (match.Key == 0 || !contours.ContainsKey(match.Key))
-                continue;
-
-            var mask = MaskBuilder.BuildMask(
-                match.Value,
-                contours[match.Key],
-                plan.Dose);
-
-            structureVolumesCc[match.Value] =
-                mask.Mask.Cast<bool>().Count(v => v) * voxelVolumeCc;
-
-            structureMasks[match.Value] = mask;
-
-            var dvh = DVHCalculator.Calculate(mask, plan.Dose);
-            if (dvh == null)
-                continue;
-
-            plan.DVHs[match.Value] = new StructureDVH
-            {
-                Name = match.Value,
-                MeanDose = dvh.MeanDose,
-                MaxDose = dvh.MaxDose,
-                Dose = dvh.DoseBins,
-                Volume = dvh.VolumeBins
-            };
-        }
-
-        // ================= PTV METRICS =================
-
-        Console.WriteLine("PTV metrics:");
-
-        foreach (var kv in ptvRx)
-        {
-            var dvh = plan.DVHs.Values.FirstOrDefault(d =>
-                d.Name.Contains(kv.Key, StringComparison.OrdinalIgnoreCase));
-
-            if (dvh == null)
-                continue;
-
-            double rx = kv.Value;
-
-            Console.WriteLine($"PTV: {kv.Key}");
-            Console.WriteLine($"  Rx   : {rx:F2} Gy");
-            Console.WriteLine($"  D2%  : {PtvMetricCalculator.D2(dvh):F2} Gy");
-            Console.WriteLine($"  D98% : {PtvMetricCalculator.D98(dvh):F2} Gy");
-            Console.WriteLine($"  D95% : {PtvMetricCalculator.D95(dvh):F2} Gy");
-            Console.WriteLine($"  D50% : {PtvMetricCalculator.D50(dvh):F2} Gy");
-            Console.WriteLine($"  HI   : {PtvMetricCalculator.HI(
-                PtvMetricCalculator.D2(dvh),
-                PtvMetricCalculator.D98(dvh)):F3}");
-
-            if (structureMasks.TryGetValue(dvh.Name, out var ptvMask))
-            {
-                Console.WriteLine(
-                    $"  CI   : {PtvSpatialMetrics.ComputeCI(ptvMask, plan.Dose, rx):F3}");
-                Console.WriteLine(
-                    $"  GI   : {PtvSpatialMetrics.ComputeGI(plan.Dose, rx):F3}");
-            }
-
-            Console.WriteLine();
-        }
-
-        // ================= CLINICAL CRITERIA =================
-
-        Console.WriteLine("Clinical criteria evaluation:");
-
-        foreach (var c in criteria.Where(c => !ptvRx.ContainsKey(c.StructureName)))
-        {
-            var dvh = plan.DVHs.Values.FirstOrDefault(d =>
-                d.Name.Contains(c.StructureName, StringComparison.OrdinalIgnoreCase));
-
-            if (dvh == null)
-                continue;
-
-            double value = c.Type switch
-            {
-                CriterionType.Dmean => DoseMetricCalculator.Dmean(dvh),
-                CriterionType.Dmax => DoseMetricCalculator.Dmax(dvh),
-                CriterionType.DxxPercent =>
-                    DoseMetricCalculator.DxPercent(dvh, c.DxPercent!.Value),
-                CriterionType.VxxGyPercent =>
-                    DoseMetricCalculator.VxxGyPercent(
-                        dvh, c.DoseGy!.Value),
-                CriterionType.VxxGyCc =>
-                    DoseMetricCalculator.VxxGyCc(
-                        dvh, c.DoseGy!.Value, structureVolumesCc[dvh.Name]),
-                CriterionType.Dcc =>
-                    DoseMetricCalculator.Dcc(
-                        dvh, c.VolumeCc!.Value, structureVolumesCc[dvh.Name]),
-                _ => double.NaN
-            };
-
-            bool pass = c.Operator == "<=" ? value <= c.Limit : value >= c.Limit;
-
-            Console.WriteLine(
-                $"{dvh.Name,-15} {c.Raw,-25} Value={value:F2}  {(pass ? "PASS" : "FAIL")}");
-        }
-
-        // ================= NTCP XEROSTOMIA =================
+        // ================= SCIENTIFIC RESOURCES =================
 
         string dataPath = Path.Combine(
             AppContext.BaseDirectory, "data");
@@ -295,34 +147,98 @@ internal class Program
         string ntcpLibraryPath = Path.Combine(
             dataPath, "ntcp_parameters_v2.json");
 
+        string tcpLibraryPath = Path.Combine(
+            dataPath, "tcp_parameters_v2.json");
+
         string aliasesPath = Path.Combine(
             dataPath, "aliases.json");
 
         if (!File.Exists(ntcpLibraryPath))
         {
-            Console.WriteLine($"ERROR: NTCP parameter library not found: {ntcpLibraryPath}");
+            Console.WriteLine(
+                $"ERROR: NTCP parameter library not found: {ntcpLibraryPath}");
             return;
         }
 
         if (!File.Exists(aliasesPath))
         {
-            Console.WriteLine($"ERROR: Structure alias file not found: {aliasesPath}");
+            Console.WriteLine(
+                $"ERROR: Structure alias file not found: {aliasesPath}");
             return;
         }
 
-        var matcher = new StructureMatcher(aliasesPath);
-        var ntcpLibrary = NtcpModelLibrary.Load(ntcpLibraryPath);
-        var ntcpSelector = new NtcpModelSelector(ntcpLibrary);
-        var ntcpEngine = new NtcpModelEngine();
+        var matcher =
+            new StructureMatcher(aliasesPath);
 
-        var ntcpContext = ClinicalContextMapper.ToNtcpEvaluationContext(
-            clinicalContext,
-            fractions: plan.Fractions > 0
-                ? plan.Fractions
-                : null,
-            dosePerFractionGy: plan.DosePerFraction > 0
-                ? plan.DosePerFraction
-                : null);
+        var ntcpLibrary =
+            NtcpModelLibrary.Load(ntcpLibraryPath);
+
+        TcpModelLibrary? tcpLibrary =
+            File.Exists(tcpLibraryPath)
+                ? TcpModelLibrary.Load(tcpLibraryPath)
+                : null;
+
+        // ================= SHARED PLAN ANALYSIS =================
+
+        PlanAnalysisResult analysis;
+
+        try
+        {
+            analysis =
+                new PlanAnalysisService().Analyze(
+                    new PlanAnalysisRequest
+                    {
+                        Plan = plan,
+                        StructureNames = roiNames,
+                        Contours = contours,
+                        Criteria = criteria,
+                        ClinicalContext = clinicalContext,
+                        StructureMatcher = matcher,
+                        NtcpLibrary = ntcpLibrary,
+                        TcpLibrary = tcpLibrary
+                    });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"ERROR: plan analysis failed safely: {ex.Message}");
+            return;
+        }
+
+        // ================= PTV METRICS =================
+
+        Console.WriteLine("PTV metrics:");
+
+        foreach (PtvAnalysisResult ptv in analysis.PtvMetrics)
+        {
+            Console.WriteLine($"PTV: {ptv.CriterionStructureName}");
+            Console.WriteLine($"  Matched ROI: {ptv.MatchedStructureName}");
+            Console.WriteLine($"  Volume: {ptv.VolumeCc:F2} cm3");
+            Console.WriteLine($"  Rx   : {ptv.PrescriptionDoseGy:F2} Gy");
+            Console.WriteLine($"  D2%  : {ptv.D2Gy:F2} Gy");
+            Console.WriteLine($"  D98% : {ptv.D98Gy:F2} Gy");
+            Console.WriteLine($"  D95% : {ptv.D95Gy:F2} Gy");
+            Console.WriteLine($"  D50% : {ptv.D50Gy:F2} Gy");
+            Console.WriteLine($"  HI   : {ptv.Hi:F3}");
+            Console.WriteLine($"  CI   : {ptv.Ci:F3}");
+            Console.WriteLine($"  GI   : {ptv.Gi:F3}");
+            Console.WriteLine();
+        }
+
+        // ================= CLINICAL CRITERIA =================
+
+        Console.WriteLine("Clinical criteria evaluation:");
+
+        foreach (ClinicalCriterionEvaluation item in analysis.ClinicalCriteria)
+        {
+            Console.WriteLine(
+                $"{item.MatchedStructureName,-15} " +
+                $"{item.Criterion.Raw,-25} " +
+                $"Value={item.Value:F2}  " +
+                $"{(item.Pass ? "PASS" : "FAIL")}");
+        }
+
+        // ================= NTCP =================
 
         Console.WriteLine();
         Console.WriteLine("NTCP — provenance-aware runtime-compatible models:");
@@ -330,312 +246,107 @@ internal class Program
             $"Plan fractionation context: N={plan.Fractions}, " +
             $"nominal target dose/fx={(plan.DosePerFraction > 0 ? $"{plan.DosePerFraction:F3} Gy" : "unknown")}");
 
-        foreach (var dvh in plan.DVHs.Values.Where(d => !ptvRx.ContainsKey(d.Name)))
+        foreach (var group in analysis.Ntcp
+                     .Where(x =>
+                         !x.ReferenceOnly &&
+                         x.StructureName != null)
+                     .GroupBy(x =>
+                         (x.StructureName, x.CanonicalStructure)))
         {
-            string? canonical = matcher.Match(dvh.Name);
-
-            if (canonical == null)
-                continue;
-
-            var models = ntcpSelector
-                .Select(new NtcpModelQuery
-                {
-                    CanonicalStructure = canonical
-                })
-                .Where(m =>
+            StructureDVH? dvh =
+                plan.DVHs.Values.FirstOrDefault(d =>
                     string.Equals(
-                        m.Implementation?.InputMode,
-                        "single_structure_dvh",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(
-                        m.Implementation?.InputMode,
-                        "single_structure_predictor_vector",
-                        StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-
-            if (models.Length == 0)
-                continue;
+                        d.Name,
+                        group.Key.StructureName,
+                        StringComparison.OrdinalIgnoreCase));
 
             Console.WriteLine();
-            Console.WriteLine($"{dvh.Name} -> {canonical}  Dmean={dvh.MeanDose:F2} Gy  Dmax={dvh.MaxDose:F2} Gy");
+            Console.WriteLine(
+                $"{group.Key.StructureName} -> {group.Key.CanonicalStructure}" +
+                (dvh == null
+                    ? ""
+                    : $"  Dmean={dvh.MeanDose:F2} Gy  Dmax={dvh.MaxDose:F2} Gy"));
 
-            foreach (var model in models)
-            {
-                var result = ntcpEngine.Evaluate(
-                    model,
-                    dvh,
-                    ntcpContext);
-
-                PrintNtcpResult(result);
-            }
+            foreach (NtcpAnalysisResult item in group)
+                PrintNtcpResult(item.Result);
         }
 
         Console.WriteLine();
-        Console.WriteLine("Reference-only NTCP evidence/models stored for matched structures:");
+        Console.WriteLine(
+            "Reference-only NTCP evidence/models stored for matched structures:");
 
-        foreach (var dvh in plan.DVHs.Values.Where(d => !ptvRx.ContainsKey(d.Name)))
+        foreach (var group in analysis.Ntcp
+                     .Where(x =>
+                         x.ReferenceOnly &&
+                         x.StructureName != null)
+                     .GroupBy(x =>
+                         (x.StructureName, x.CanonicalStructure)))
         {
-            string? canonical = matcher.Match(dvh.Name);
-            if (canonical == null)
-                continue;
-
-            var referenceModels = ntcpSelector
-                .Select(new NtcpModelQuery
-                {
-                    CanonicalStructure = canonical,
-                    IncludeRuntimeDisabled = true
-                })
-                .Where(m => m.Implementation?.RuntimeEnabled != true)
-                .ToArray();
-
-            if (referenceModels.Length == 0)
-                continue;
-
             Console.WriteLine();
-            Console.WriteLine($"{dvh.Name} -> {canonical}");
+            Console.WriteLine(
+                $"{group.Key.StructureName} -> {group.Key.CanonicalStructure}");
 
-            foreach (var model in referenceModels)
-            {
-                var result = ntcpEngine.Evaluate(
-                    model,
-                    dvh,
-                    ntcpContext);
-
-                PrintNtcpResult(result);
-            }
+            foreach (NtcpAnalysisResult item in group)
+                PrintNtcpResult(item.Result);
         }
 
         Console.WriteLine();
-        Console.WriteLine("Additional NTCP models requiring clinical/model-specific inputs:");
+        Console.WriteLine(
+            "Additional NTCP models requiring clinical/model-specific inputs:");
 
-        foreach (var model in ntcpSelector
-                     .Select(new NtcpModelQuery
-                     {
-                         EquationId = "logistic"
-                     })
-                     .Where(m =>
-                         string.Equals(
-                             m.Implementation?.InputMode,
-                             "predictor_vector",
-                             StringComparison.OrdinalIgnoreCase)))
+        foreach (NtcpAnalysisResult item in analysis.Ntcp.Where(
+                     x => x.StructureName == null))
         {
-            var result = ntcpEngine.Evaluate(
-                model,
-                dvh: null,
-                context: ntcpContext);
-
-            PrintNtcpResult(result);
+            PrintNtcpResult(item.Result);
         }
+
         // ================= TCP =================
 
         Console.WriteLine();
         Console.WriteLine("TCP — explicit provenance-aware model selection:");
 
-        if (clinicalContext == null ||
-            string.IsNullOrWhiteSpace(clinicalContext.Tcp.ModelId))
+        if (analysis.Tcp == null)
         {
-            Console.WriteLine(
-                "TCP not requested. Add tcp.model_id to clinical_context.json to evaluate a specific validated model.");
-        }
-        else
-        {
-            string tcpLibraryPath = Path.Combine(
-                dataPath, "tcp_parameters_v2.json");
-
-            if (!File.Exists(tcpLibraryPath))
+            if (clinicalContext == null ||
+                string.IsNullOrWhiteSpace(
+                    clinicalContext.Tcp.ModelId))
             {
                 Console.WriteLine(
-                    $"ERROR: TCP parameter library not found: {tcpLibraryPath}");
+                    "TCP not requested. Add tcp.model_id to clinical_context.json to evaluate a specific validated model.");
             }
             else
             {
-                try
-                {
-                    var tcpLibrary = TcpModelLibrary.Load(tcpLibraryPath);
-                    TcpModelDefinition? tcpModel =
-                        tcpLibrary.FindById(clinicalContext.Tcp.ModelId!);
-
-                    if (tcpModel == null)
-                    {
-                        Console.WriteLine(
-                            $"ERROR: TCP model ID not found: {clinicalContext.Tcp.ModelId}");
-                    }
-                    else
-                    {
-                        var tcpContext = ClinicalContextMapper.ToTcpEvaluationContext(
-                            clinicalContext,
-                            fractions: plan.Fractions > 0
-                                ? plan.Fractions
-                                : null,
-                            dosePerFractionGy: plan.DosePerFraction > 0
-                                ? plan.DosePerFraction
-                                : null,
-                            totalPrescriptionDoseGy: plan.TotalDose > 0
-                                ? plan.TotalDose
-                                : null);
-
-                        StructureDVH? tcpTargetDvh = null;
-                        bool targetReady = true;
-
-                        if (string.Equals(
-                                tcpModel.Implementation?.InputMode,
-                                "target_dvh",
-                                StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (string.IsNullOrWhiteSpace(
-                                    clinicalContext.Tcp.TargetStructureName))
-                            {
-                                Console.WriteLine(
-                                    "TCP [MissingInputs]: tcp.target_structure_name is required for this target-DVH model.");
-                                targetReady = false;
-                            }
-                            else
-                            {
-                                tcpTargetDvh = EnsureExactStructureDvh(
-                                    clinicalContext.Tcp.TargetStructureName!,
-                                    roiNames,
-                                    contours,
-                                    plan.Dose,
-                                    plan.DVHs,
-                                    structureVolumesCc,
-                                    structureMasks,
-                                    voxelVolumeCc,
-                                    out string? targetError);
-
-                                if (tcpTargetDvh == null)
-                                {
-                                    Console.WriteLine(
-                                        $"TCP [MissingInputs]: {targetError}");
-                                    targetReady = false;
-                                }
-                                else
-                                {
-                                    Console.WriteLine(
-                                        $"TCP target: {tcpTargetDvh.Name}" +
-                                        (structureVolumesCc.TryGetValue(
-                                            tcpTargetDvh.Name,
-                                            out double tcpTargetVolume)
-                                            ? $" | volume={tcpTargetVolume:F2} cm³"
-                                            : ""));
-                                }
-                            }
-                        }
-
-                        if (targetReady)
-                        {
-                            var tcpResult = new TcpModelEngine().Evaluate(
-                                tcpModel,
-                                tcpTargetDvh,
-                                tcpContext);
-
-                            PrintTcpResult(tcpResult);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(
-                        $"ERROR: TCP evaluation failed safely: {ex.Message}");
-                }
+                Console.WriteLine(
+                    "TCP was requested but no result was produced. See analysis warnings below.");
             }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    analysis.Tcp.TargetStructureName))
+            {
+                Console.WriteLine(
+                    $"TCP target: {analysis.Tcp.TargetStructureName}" +
+                    (analysis.Tcp.TargetVolumeCc is double volume
+                        ? $" | volume={volume:F2} cm3"
+                        : ""));
+            }
+
+            PrintTcpResult(
+                analysis.Tcp.Result);
+        }
+
+        if (analysis.Warnings.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Analysis warnings:");
+
+            foreach (string warning in analysis.Warnings)
+                Console.WriteLine($"  WARNING: {warning}");
         }
         Console.WriteLine();
         Console.WriteLine("Finished successfully.");
         Console.ReadKey();
-    }
-
-    private static StructureDVH? EnsureExactStructureDvh(
-        string requestedStructureName,
-        Dictionary<int, string> roiNames,
-        Dictionary<int, List<double[]>> contours,
-        DoseVolume dose,
-        Dictionary<string, StructureDVH> dvhs,
-        Dictionary<string, double> structureVolumesCc,
-        Dictionary<string, StructureMask> structureMasks,
-        double voxelVolumeCc,
-        out string? error)
-    {
-        error = null;
-
-        var existing = dvhs.Values
-            .Where(d => string.Equals(
-                d.Name,
-                requestedStructureName,
-                StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        if (existing.Length == 1)
-            return existing[0];
-
-        if (existing.Length > 1)
-        {
-            error =
-                $"Multiple already-calculated DVHs match exact TCP target name '{requestedStructureName}'.";
-            return null;
-        }
-
-        var matches = roiNames
-            .Where(r => string.Equals(
-                r.Value,
-                requestedStructureName,
-                StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        if (matches.Length == 0)
-        {
-            error =
-                $"Exact RTSTRUCT ROI '{requestedStructureName}' was not found. TCP target names are not fuzzy-matched.";
-            return null;
-        }
-
-        if (matches.Length > 1)
-        {
-            error =
-                $"RTSTRUCT contains multiple exact case-insensitive matches for TCP target '{requestedStructureName}'.";
-            return null;
-        }
-
-        var match = matches[0];
-
-        if (!contours.TryGetValue(match.Key, out var targetContours) ||
-            targetContours.Count == 0)
-        {
-            error =
-                $"TCP target '{match.Value}' has no usable contours.";
-            return null;
-        }
-
-        var mask = MaskBuilder.BuildMask(
-            match.Value,
-            targetContours,
-            dose);
-
-        var calculated = DVHCalculator.Calculate(mask, dose);
-
-        if (calculated == null)
-        {
-            error =
-                $"DVH calculation failed for TCP target '{match.Value}'.";
-            return null;
-        }
-
-        structureVolumesCc[match.Value] =
-            mask.Mask.Cast<bool>().Count(v => v) * voxelVolumeCc;
-
-        structureMasks[match.Value] = mask;
-
-        var result = new StructureDVH
-        {
-            Name = match.Value,
-            MeanDose = calculated.MeanDose,
-            MaxDose = calculated.MaxDose,
-            Dose = calculated.DoseBins,
-            Volume = calculated.VolumeBins
-        };
-
-        dvhs[match.Value] = result;
-
-        return result;
     }
 
     private static void PrintTcpResult(TcpEvaluationResult result)
