@@ -113,12 +113,20 @@ public class SyntheticDicomCommissioningTests
             Assert.Equal("PTV_60", folderPtv.MatchedStructureName);
             Assert.Equal(60.0, folderPtv.D50Gy, precision: 12);
 
-            ClinicalCriterionEvaluation oar =
-                Assert.Single(folderAnalysis.ClinicalCriteria);
+            Assert.Equal(3, folderAnalysis.ClinicalCriteria.Count);
 
-            Assert.Equal("OAR", oar.MatchedStructureName);
+            ClinicalCriterionEvaluation oar =
+                Assert.Single(
+                    folderAnalysis.ClinicalCriteria.Where(c =>
+                        c.MatchedStructureName == "OAR"));
+
             Assert.Equal(60.0, oar.Value, precision: 12);
             Assert.True(oar.Pass);
+
+            Assert.Equal(
+                2,
+                folderAnalysis.ClinicalCriteria.Count(c =>
+                    c.MatchedStructureName == "PTV_60"));
         }
         finally
         {
