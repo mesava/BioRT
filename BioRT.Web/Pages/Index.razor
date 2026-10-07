@@ -1,4 +1,5 @@
 @page "/"
+@using System.Text
 @inject ModelCatalogService Catalog
 @inject DicomBundleImporter DicomImporter
 @inject PlanAnalysisService AnalysisService
@@ -23,8 +24,8 @@
         <div class="notice">
             <strong>Режим разработки.</strong>
             Сайт уже выполняет локальную цепочку DICOM → DVH → физические метрики
-            → clinical criteria → NTCP/TCP в браузере. Следующий этап —
-            независимое сравнение web и console на одном деидентифицированном плане.
+            → clinical criteria → NTCP/TCP в браузере. Synthetic Web↔Console commissioning
+            пройден; продолжается проверка на реалистичных деидентифицированных наборах.
         </div>
     </div>
 
@@ -58,11 +59,12 @@
     <div class="calculator-card">
         <label class="dropzone">
             <span class="drop-icon">↥</span>
-            <strong>Выберите RTPLAN / RTDOSE / RTSTRUCT и JSON-контекст</strong>
+            <strong>Выберите ZIP или RTPLAN / RTDOSE / RTSTRUCT и JSON-контекст</strong>
             <span>
-                Файлы читаются непосредственно в вашем браузере.
+                Файлы и ZIP распаковываются непосредственно в вашем браузере.
                 BioRT не отправляет выбранный DICOM на сервер.
-                Monaco criteria JSON и clinical_context.json можно выбрать вместе с DICOM.
+                Monaco criteria JSON и clinical_context.json можно выбрать вместе с DICOM
+                либо положить в тот же ZIP.
             </span>
 
             <InputFile class="file-input"
@@ -71,8 +73,9 @@
                        disabled="@IsImporting" />
 
             <span class="file-hint">
-                Один согласованный набор: 1 RTPLAN + 1 RTDOSE + 1 RTSTRUCT.
+                Один согласованный набор: ZIP либо 1 RTPLAN + 1 RTDOSE + 1 RTSTRUCT.
                 Criteria JSON рекомендуется; clinical_context.json — опционально.
+                ZIP распаковывается только в памяти браузера.
             </span>
         </label>
 
@@ -148,7 +151,7 @@
                         @if (!string.IsNullOrWhiteSpace(AnalysisFingerprint))
                         {
                             <p class="fingerprint">
-                                Commissioning fingerprint:
+                                Commissioning SHA-256:
                                 <code>@AnalysisFingerprint</code>
                             </p>
                         }
@@ -463,6 +466,11 @@
     private const long MaxJsonFileSize =
         5L * 1024L * 1024L;
 
+    private const int MaxArchiveEntries = 100;
+
+    private const long MaxArchiveExpandedSize =
+        512L * 1024L * 1024L;
+
     private DicomImportResult? ImportedDicom;
     private PlanAnalysisResult? AnalysisResult;
     private string? ImportError;
@@ -519,29 +527,71 @@
                 return;
             }
 
-            IBrowserFile[] jsonFiles =
-                files
-                    .Where(file =>
-                        file.Name.EndsWith(
-                            ".json",
-                            StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
+            var inputs =
+                new List<DicomInputFile>();
 
-            IBrowserFile[] dicomFiles =
-                files
-                    .Where(file =>
-                        !file.Name.EndsWith(
-                            ".json",
-                            StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
+            var jsonInputs =
+                new List<(string Name, string Json)>();
 
-            DicomInputFile[] inputs =
-                dicomFiles
-                    .Select(file =>
-                        BrowserDicomInputFileFactory.Create(
-                            file,
-                            MaxBrowserFileSize))
-                    .ToArray();
+            foreach (IBrowserFile file in files)
+            {
+                if (file.Name.EndsWith(
+                        ".zip",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    await using Stream zipStream =
+                        file.OpenReadStream(
+                            MaxBrowserFileSize);
+
+                    IReadOnlyList<ArchiveBundleEntry> entries =
+                        await ArchiveBundleReader.ReadAsync(
+                            zipStream,
+                            maxEntries: MaxArchiveEntries,
+                            maxExpandedBytes: MaxArchiveExpandedSize);
+
+                    foreach (ArchiveBundleEntry entry in entries)
+                    {
+                        if (entry.Name.EndsWith(
+                                ".json",
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (entry.Bytes.LongLength > MaxJsonFileSize)
+                            {
+                                throw new InvalidOperationException(
+                                    $"JSON inside ZIP is too large: '{entry.Name}'.");
+                            }
+
+                            jsonInputs.Add(
+                                (entry.Name,
+                                 Encoding.UTF8.GetString(entry.Bytes)));
+
+                            continue;
+                        }
+
+                        inputs.Add(
+                            ArchiveBundleReader.ToDicomInputFile(
+                                entry));
+                    }
+
+                    continue;
+                }
+
+                if (file.Name.EndsWith(
+                        ".json",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    jsonInputs.Add(
+                        (file.Name,
+                         await ReadBrowserTextFile(file)));
+
+                    continue;
+                }
+
+                inputs.Add(
+                    BrowserDicomInputFileFactory.Create(
+                        file,
+                        MaxBrowserFileSize));
+            }
 
             ImportedDicom =
                 await DicomImporter.LoadAsync(inputs);
@@ -554,13 +604,13 @@
             var criteriaCandidates =
                 new List<(string Name, IReadOnlyList<DoseCriterion> Criteria)>();
 
-            foreach (IBrowserFile jsonFile in jsonFiles)
+            foreach ((string jsonName, string json) in jsonInputs)
             {
-                string json =
-                    await ReadBrowserTextFile(jsonFile);
+                string fileName =
+                    Path.GetFileName(jsonName);
 
                 if (string.Equals(
-                        jsonFile.Name,
+                        fileName,
                         "clinical_context.json",
                         StringComparison.OrdinalIgnoreCase))
                 {
@@ -579,7 +629,7 @@
                         MonacoCriteriaParser.ParseJson(json);
 
                     criteriaCandidates.Add(
-                        (jsonFile.Name, parsed));
+                        (jsonName, parsed));
                 }
                 catch
                 {
@@ -620,7 +670,7 @@
                     });
 
             AnalysisFingerprint =
-                PlanAnalysisFingerprint.ComputeShort(
+                PlanAnalysisFingerprint.Compute(
                     ImportedDicom.Plan,
                     AnalysisResult);
         }
