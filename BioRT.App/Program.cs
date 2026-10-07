@@ -75,9 +75,7 @@ internal class Program
 
         // ================= LOAD CRITERIA JSON =================
 
-        var criteriaJsonPath = Directory
-            .GetFiles(path, "*.json", SearchOption.AllDirectories)
-            .FirstOrDefault(f => !f.EndsWith("tcp_ntcp_params.json"));
+        var criteriaJsonPath = FindCriteriaJsonPath(path);
 
         if (criteriaJsonPath == null)
         {
@@ -106,6 +104,40 @@ internal class Program
             }
         }
 
+        // ================= OPTIONAL CLINICAL CONTEXT =================
+
+        ClinicalContext? clinicalContext = null;
+
+        string? clinicalContextPath = Directory
+            .GetFiles(path, "*.json", SearchOption.AllDirectories)
+            .FirstOrDefault(f =>
+                string.Equals(
+                    Path.GetFileName(f),
+                    "clinical_context.json",
+                    StringComparison.OrdinalIgnoreCase));
+
+        if (clinicalContextPath != null)
+        {
+            try
+            {
+                clinicalContext = ClinicalContextLoader.Load(clinicalContextPath);
+                Console.WriteLine(
+                    $"Clinical context: loaded ({Path.GetFileName(clinicalContextPath)})");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"ERROR: invalid clinical_context.json: {ex.Message}");
+                return;
+            }
+        }
+        else
+        {
+            Console.WriteLine(
+                "Clinical context: not provided (optional; multivariable models may report MissingInputs).");
+        }
+
+        Console.WriteLine();
         // ================= IDENTIFY PTVs =================
 
         var ptvRx = new Dictionary<string, double>();
@@ -283,15 +315,14 @@ internal class Program
         var ntcpSelector = new NtcpModelSelector(ntcpLibrary);
         var ntcpEngine = new NtcpModelEngine();
 
-        var ntcpContext = new NtcpEvaluationContext
-        {
-            DosePerFractionGy = plan.DosePerFraction > 0
-                ? plan.DosePerFraction
-                : null,
-            Fractions = plan.Fractions > 0
+        var ntcpContext = ClinicalContextMapper.ToNtcpEvaluationContext(
+            clinicalContext,
+            fractions: plan.Fractions > 0
                 ? plan.Fractions
-                : null
-        };
+                : null,
+            dosePerFractionGy: plan.DosePerFraction > 0
+                ? plan.DosePerFraction
+                : null);
 
         Console.WriteLine();
         Console.WriteLine("NTCP — provenance-aware runtime-compatible models:");
@@ -306,13 +337,23 @@ internal class Program
             if (canonical == null)
                 continue;
 
-            var models = ntcpSelector.Select(new NtcpModelQuery
-            {
-                CanonicalStructure = canonical,
-                EquationId = "lkb_probit"
-            });
+            var models = ntcpSelector
+                .Select(new NtcpModelQuery
+                {
+                    CanonicalStructure = canonical
+                })
+                .Where(m =>
+                    string.Equals(
+                        m.Implementation?.InputMode,
+                        "single_structure_dvh",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        m.Implementation?.InputMode,
+                        "single_structure_predictor_vector",
+                        StringComparison.OrdinalIgnoreCase))
+                .ToArray();
 
-            if (models.Count == 0)
+            if (models.Length == 0)
                 continue;
 
             Console.WriteLine();
@@ -367,15 +408,21 @@ internal class Program
         Console.WriteLine();
         Console.WriteLine("Additional NTCP models requiring clinical/model-specific inputs:");
 
-        foreach (var model in ntcpSelector.Select(new NtcpModelQuery
-                 {
-                     EquationId = "logistic"
-                 }))
+        foreach (var model in ntcpSelector
+                     .Select(new NtcpModelQuery
+                     {
+                         EquationId = "logistic"
+                     })
+                     .Where(m =>
+                         string.Equals(
+                             m.Implementation?.InputMode,
+                             "predictor_vector",
+                             StringComparison.OrdinalIgnoreCase)))
         {
             var result = ntcpEngine.Evaluate(
                 model,
                 dvh: null,
-                context: new NtcpEvaluationContext());
+                context: ntcpContext);
 
             PrintNtcpResult(result);
         }
@@ -384,6 +431,45 @@ internal class Program
         Console.ReadKey();
     }
 
+    private static string? FindCriteriaJsonPath(string rootPath)
+    {
+        foreach (string file in Directory
+                     .GetFiles(rootPath, "*.json", SearchOption.AllDirectories)
+                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(
+                    Path.GetFileName(file),
+                    "clinical_context.json",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+
+                if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                    doc.RootElement.TryGetProperty(
+                        "prescriptions",
+                        out var prescriptions) &&
+                    prescriptions.ValueKind == JsonValueKind.Array)
+                {
+                    return file;
+                }
+            }
+            catch (JsonException)
+            {
+                // Not a criteria JSON; continue searching.
+            }
+            catch (IOException)
+            {
+                // Unreadable candidate; continue searching.
+            }
+        }
+
+        return null;
+    }
     private static void PrintNtcpResult(NtcpEvaluationResult result)
     {
         string probability = result.Probability is double value
