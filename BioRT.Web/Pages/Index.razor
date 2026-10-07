@@ -1,0 +1,214 @@
+@page "/"
+@inject ModelCatalogService Catalog
+
+<PageTitle>BioRT — TCP / NTCP из DICOM</PageTitle>
+
+<section class="hero">
+    <div class="hero-copy">
+        <p class="eyebrow">Radiotherapy biological plan evaluation</p>
+        <h1>TCP / NTCP из DICOM — в браузере</h1>
+        <p class="lead">
+            BioRT объединяет физическую оценку плана, клинические дозовые критерии
+            и воспроизводимые TCP/NTCP-модели с явной научной прослеживаемостью.
+        </p>
+
+        <div class="hero-actions">
+            <a class="button primary" href="#calculator">Открыть калькулятор</a>
+            <a class="button secondary" href="#models">Посмотреть модели</a>
+        </div>
+
+        <div class="notice">
+            <strong>Режим разработки.</strong>
+            На этом этапе сайт уже публикует модельный каталог.
+            Клиентская обработка DICOM будет подключена следующим этапом.
+        </div>
+    </div>
+
+    <div class="hero-metrics" aria-label="Состояние библиотеки">
+        <article>
+            <span class="metric-value">@NtcpModels.Count</span>
+            <span class="metric-label">NTCP-моделей / записей</span>
+        </article>
+        <article>
+            <span class="metric-value">@TcpModels.Count</span>
+            <span class="metric-label">TCP-моделей / записей</span>
+        </article>
+        <article>
+            <span class="metric-value">@RuntimeCount</span>
+            <span class="metric-label">runtime-enabled</span>
+        </article>
+    </div>
+</section>
+
+<section id="calculator" class="section">
+    <div class="section-heading">
+        <p class="eyebrow">Калькулятор</p>
+        <h2>Локальная обработка DICOM</h2>
+        <p>
+            Целевая архитектура сайта — обработка RTPLAN / RTDOSE / RTSTRUCT
+            непосредственно в браузере. Данные пациента не должны уходить
+            на внешний сервер только ради вычисления TCP/NTCP.
+        </p>
+    </div>
+
+    <div class="calculator-card">
+        <div class="dropzone disabled" aria-disabled="true">
+            <span class="drop-icon">↥</span>
+            <strong>Загрузка DICOM будет включена в следующем этапе</strong>
+            <span>
+                План: ZIP или набор RTPLAN / RTDOSE / RTSTRUCT +
+                criteria JSON + optional clinical_context.json.
+            </span>
+        </div>
+
+        <div class="pipeline">
+            <span>DICOM</span>
+            <b>→</b>
+            <span>DVH</span>
+            <b>→</b>
+            <span>Физические метрики</span>
+            <b>→</b>
+            <span>NTCP</span>
+            <b>→</b>
+            <span>TCP</span>
+        </div>
+    </div>
+</section>
+
+<section id="models" class="section">
+    <div class="section-heading row-heading">
+        <div>
+            <p class="eyebrow">Модельный каталог</p>
+            <h2>Показываем не только процент, но и источник модели</h2>
+            <p>
+                Каждая запись сохраняет endpoint, model family, applicability,
+                runtime status и публикационный источник.
+            </p>
+        </div>
+
+        <div class="filters" role="group" aria-label="Фильтр моделей">
+            <button class="@FilterClass("all")" @onclick='() => SetFilter("all")'>Все</button>
+            <button class="@FilterClass("NTCP")" @onclick='() => SetFilter("NTCP")'>NTCP</button>
+            <button class="@FilterClass("TCP")" @onclick='() => SetFilter("TCP")'>TCP</button>
+            <button class="@FilterClass("runtime")" @onclick='() => SetFilter("runtime")'>Только runtime</button>
+        </div>
+    </div>
+
+    <div class="model-grid">
+        @foreach (var model in FilteredModels)
+        {
+            <article class="model-card">
+                <div class="model-card-top">
+                    <span class="domain-badge">@model.Domain</span>
+                    <span class="status-badge @(model.RuntimeEnabled ? "enabled" : "reference")">
+                        @(model.RuntimeEnabled ? "runtime" : "reference")
+                    </span>
+                </div>
+
+                <h3>@model.Id</h3>
+
+                <p class="endpoint">@model.EndpointDisplay</p>
+
+                @if (!string.IsNullOrWhiteSpace(model.PrimaryContext))
+                {
+                    <p class="context">@model.PrimaryContext</p>
+                }
+
+                <dl>
+                    <div>
+                        <dt>Family</dt>
+                        <dd>@model.ModelFamily</dd>
+                    </div>
+                    <div>
+                        <dt>Equation</dt>
+                        <dd>@model.EquationId</dd>
+                    </div>
+                    <div>
+                        <dt>Status</dt>
+                        <dd>@model.Status</dd>
+                    </div>
+                </dl>
+
+                @if (!string.IsNullOrWhiteSpace(model.Pmid))
+                {
+                    <a class="source-link"
+                       href="@($"https://pubmed.ncbi.nlm.nih.gov/{model.Pmid}/")"
+                       target="_blank"
+                       rel="noreferrer">
+                        PMID @model.Pmid ↗
+                    </a>
+                }
+            </article>
+        }
+    </div>
+</section>
+
+<section id="science" class="section split-section">
+    <article class="panel">
+        <p class="eyebrow">Научная база</p>
+        <h2>Model-aware, а не «таблица коэффициентов»</h2>
+        <p>
+            BioRT не смешивает TD50, m, n, D50, γ, α/β и другие параметры
+            из разных публикаций в одну синтетическую модель.
+        </p>
+        <ul class="check-list">
+            <li>TG-166 benchmark / gEUD / TCP mathematics</li>
+            <li>source-specific fractionation handling</li>
+            <li>endpoint и time point рядом с результатом</li>
+            <li>Calculated / MissingInputs / NotApplicable / RuntimeDisabled</li>
+        </ul>
+    </article>
+
+    <article id="privacy" class="panel privacy-panel">
+        <p class="eyebrow">Данные пациента</p>
+        <h2>Веб — не значит загрузка DICOM на сервер</h2>
+        <p>
+            Целевой production-вариант — статический WebAssembly-сайт:
+            DICOM читается и рассчитывается локально в браузере.
+        </p>
+        <p>
+            До завершения и независимой проверки клиентского DICOM-пайплайна
+            публичный сайт должен использовать только синтетические или
+            деидентифицированные наборы.
+        </p>
+    </article>
+</section>
+
+<section class="safety-strip">
+    <strong>FOR DECISION SUPPORT ONLY.</strong>
+    <span>BioRT не заменяет TPS, клинический протокол или решение врача.</span>
+</section>
+
+@code {
+    private IReadOnlyList<CatalogModel> NtcpModels = Array.Empty<CatalogModel>();
+    private IReadOnlyList<CatalogModel> TcpModels = Array.Empty<CatalogModel>();
+    private string _filter = "all";
+
+    private int RuntimeCount =>
+        NtcpModels.Count(m => m.RuntimeEnabled) +
+        TcpModels.Count(m => m.RuntimeEnabled);
+
+    private IEnumerable<CatalogModel> AllModels =>
+        NtcpModels.Concat(TcpModels);
+
+    private IEnumerable<CatalogModel> FilteredModels =>
+        _filter switch
+        {
+            "NTCP" => NtcpModels,
+            "TCP" => TcpModels,
+            "runtime" => AllModels.Where(m => m.RuntimeEnabled),
+            _ => AllModels
+        };
+
+    protected override void OnInitialized()
+    {
+        NtcpModels = Catalog.LoadNtcpModels();
+        TcpModels = Catalog.LoadTcpModels();
+    }
+
+    private void SetFilter(string filter)
+        => _filter = filter;
+
+    private string FilterClass(string filter)
+        => _filter == filter ? "filter active" : "filter";
+}
