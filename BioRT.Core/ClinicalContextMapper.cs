@@ -41,6 +41,25 @@ public static class ClinicalContextMapper
         };
     }
 
+    public static TcpEvaluationContext ToTcpEvaluationContext(
+        ClinicalContext? clinicalContext,
+        int? fractions,
+        double? dosePerFractionGy,
+        double? totalPrescriptionDoseGy)
+    {
+        return new TcpEvaluationContext
+        {
+            Fractions = fractions,
+            DosePerFractionGy = dosePerFractionGy,
+            TotalPrescriptionDoseGy = totalPrescriptionDoseGy,
+            Diagnosis = clinicalContext?.Tumor.Diagnosis,
+            Histology = clinicalContext?.Tumor.Histology,
+            RiskGroup = clinicalContext?.Tumor.RiskGroup,
+            Setting = clinicalContext?.Treatment.Setting,
+            TargetRole = clinicalContext?.Tcp.TargetRole
+        };
+    }
+
     private static void MapPatient(
         ClinicalContext context,
         IDictionary<string, double> numeric,

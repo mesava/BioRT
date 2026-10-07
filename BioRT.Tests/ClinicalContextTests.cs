@@ -18,11 +18,75 @@ public class ClinicalContextTests
 
         ClinicalContext context = ClinicalContextLoader.Load(path);
 
-        Assert.Equal("0.1.0", context.SchemaVersion);
+        Assert.Equal("0.2.0", context.SchemaVersion);
         Assert.Equal(68.0, context.Patient.AgeYears!.Value, precision: 12);
         Assert.Equal("former", context.Patient.SmokingStatus);
         Assert.Equal("NSCLC", context.Tumor.Diagnosis);
         Assert.Equal("concurrent", context.Treatment.ChemotherapySequence);
+    }
+
+    [Fact]
+    public void Mapper_BuildsExplicitTcpEvaluationContext()
+    {
+        var context = new ClinicalContext
+        {
+            Tumor = new ClinicalTumorContext
+            {
+                Diagnosis = "prostate_cancer",
+                Histology = "adenocarcinoma",
+                RiskGroup = "high"
+            },
+            Treatment = new ClinicalTreatmentContext
+            {
+                Setting = "definitive_sbrt"
+            },
+            Tcp = new ClinicalTcpContext
+            {
+                ModelId = "royce_2021_prostate_sbrt_ffbr_5y_high",
+                TargetRole = "prescription_course"
+            }
+        };
+
+        var mapped = ClinicalContextMapper.ToTcpEvaluationContext(
+            context,
+            fractions: 5,
+            dosePerFractionGy: 7.74,
+            totalPrescriptionDoseGy: 38.7);
+
+        Assert.Equal("prostate_cancer", mapped.Diagnosis);
+        Assert.Equal("adenocarcinoma", mapped.Histology);
+        Assert.Equal("high", mapped.RiskGroup);
+        Assert.Equal("definitive_sbrt", mapped.Setting);
+        Assert.Equal("prescription_course", mapped.TargetRole);
+        Assert.Equal(5, mapped.Fractions);
+        Assert.Equal(38.7, mapped.TotalPrescriptionDoseGy!.Value, precision: 12);
+    }
+
+    [Fact]
+    public void Loader_AcceptsLegacySchemaV010()
+    {
+        var context = new ClinicalContext
+        {
+            SchemaVersion = "0.1.0"
+        };
+
+        ClinicalContextLoader.Validate(context);
+    }
+
+    [Fact]
+    public void Loader_RejectsTcpTargetWithoutModelId()
+    {
+        var context = new ClinicalContext
+        {
+            Tcp = new ClinicalTcpContext
+            {
+                TargetStructureName = "Prostate",
+                TargetRole = "prostate_gland"
+            }
+        };
+
+        Assert.Throws<InvalidOperationException>(
+            () => ClinicalContextLoader.Validate(context));
     }
 
     [Fact]

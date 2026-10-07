@@ -81,6 +81,33 @@ public sealed class TcpModelEngine
                 missingInputs: new[] { "target_dvh" });
         }
 
+        if (!string.IsNullOrWhiteSpace(model.Target.CanonicalStructure))
+        {
+            if (string.IsNullOrWhiteSpace(context.TargetRole))
+            {
+                return Build(
+                    model,
+                    TcpEvaluationStatus.MissingInputs,
+                    warnings: warnings.Append(
+                        "An explicit target_role is required for target-DVH TCP models; ROI names are not used to infer tumor semantics.")
+                        .ToArray(),
+                    missingInputs: new[] { "target_role" });
+            }
+
+            if (!string.Equals(
+                    model.Target.CanonicalStructure,
+                    context.TargetRole,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return Build(
+                    model,
+                    TcpEvaluationStatus.NotApplicable,
+                    warnings: warnings.Append(
+                        $"Explicit target_role '{context.TargetRole}' does not match model target '{model.Target.CanonicalStructure}'.")
+                        .ToArray());
+            }
+        }
+
         if (context.Fractions is not int fractions || fractions <= 0)
         {
             return Build(

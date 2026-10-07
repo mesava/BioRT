@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.2.0",
+  "patient": {
+    "age_years": 72
+  },
+  "tumor": {
+    "diagnosis": "prostate_cancer",
+    "histology": "adenocarcinoma",
+    "stage": "localized",
+    "risk_group": "high",
+    "laterality": "midline"
+  },
+  "treatment": {
+    "setting": "definitive_sbrt",
+    "chemotherapy_sequence": "none"
+  },
+  "baseline": {},
+  "tcp": {
+    "model_id": "royce_2021_prostate_sbrt_ffbr_5y_high",
+    "target_role": "prescription_course"
+  },
+  "model_overrides": {
+    "numeric": {},
+    "categorical": {}
+  }
+}

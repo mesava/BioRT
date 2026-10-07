@@ -5,7 +5,7 @@ namespace BioRT.Core.Models;
 public sealed class ClinicalContext
 {
     [JsonPropertyName("schema_version")]
-    public string SchemaVersion { get; init; } = "0.1.0";
+    public string SchemaVersion { get; init; } = "0.2.0";
 
     [JsonPropertyName("patient")]
     public ClinicalPatientContext Patient { get; init; } = new();
@@ -18,6 +18,9 @@ public sealed class ClinicalContext
 
     [JsonPropertyName("baseline")]
     public ClinicalBaselineContext Baseline { get; init; } = new();
+
+    [JsonPropertyName("tcp")]
+    public ClinicalTcpContext Tcp { get; init; } = new();
 
     [JsonPropertyName("model_overrides")]
     public ClinicalModelOverrides ModelOverrides { get; init; } = new();
@@ -53,6 +56,13 @@ public sealed class ClinicalTumorContext
     public string? Stage { get; init; }
 
     /// <summary>
+    /// Canonical disease-model risk group, for example:
+    /// low_intermediate, high.
+    /// </summary>
+    [JsonPropertyName("risk_group")]
+    public string? RiskGroup { get; init; }
+
+    /// <summary>
     /// Allowed values for current NTCP mappings: superior, middle, inferior.
     /// </summary>
     [JsonPropertyName("location")]
@@ -67,6 +77,13 @@ public sealed class ClinicalTumorContext
 
 public sealed class ClinicalTreatmentContext
 {
+    /// <summary>
+    /// Canonical treatment setting used for model applicability, for example:
+    /// definitive_ebrt, definitive_sbrt, reirradiation_sbrt.
+    /// </summary>
+    [JsonPropertyName("setting")]
+    public string? Setting { get; init; }
+
     /// <summary>
     /// Allowed values: none, concurrent, sequential.
     /// </summary>
@@ -86,6 +103,30 @@ public sealed class ClinicalBaselineContext
     /// </summary>
     [JsonPropertyName("xerostomia")]
     public string? Xerostomia { get; init; }
+}
+
+public sealed class ClinicalTcpContext
+{
+    /// <summary>
+    /// Exact provenance-library model ID to evaluate.
+    /// TCP is not evaluated automatically when this is omitted.
+    /// </summary>
+    [JsonPropertyName("model_id")]
+    public string? ModelId { get; init; }
+
+    /// <summary>
+    /// Exact RTSTRUCT ROI name used when the selected model requires
+    /// a target DVH.
+    /// </summary>
+    [JsonPropertyName("target_structure_name")]
+    public string? TargetStructureName { get; init; }
+
+    /// <summary>
+    /// Explicit semantic role of the target, for example prostate_gland.
+    /// For target-DVH models this must match the model record.
+    /// </summary>
+    [JsonPropertyName("target_role")]
+    public string? TargetRole { get; init; }
 }
 
 public sealed class ClinicalModelOverrides

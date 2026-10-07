@@ -29,7 +29,8 @@ public class TcpModelEngineTests
                 DosePerFractionGy = 2.0,
                 TotalPrescriptionDoseGy = 68.0,
                 Diagnosis = "prostate_cancer",
-                Setting = "definitive_ebrt"
+                Setting = "definitive_ebrt",
+                TargetRole = "prostate_gland"
             });
 
         double d50 = 66.8;
@@ -61,7 +62,54 @@ public class TcpModelEngineTests
                 DosePerFractionGy = 7.25,
                 TotalPrescriptionDoseGy = 36.25,
                 Diagnosis = "prostate_cancer",
+                Setting = "definitive_ebrt",
+                TargetRole = "prostate_gland"
+            });
+
+        Assert.Equal(TcpEvaluationStatus.NotApplicable, result.Status);
+        Assert.Null(result.Probability);
+    }
+
+    [Fact]
+    public void TargetDvhModel_RequiresExplicitTargetRole()
+    {
+        var model = LoadModel(
+            "sachpazidis_2020_prostate_gland_lq_poisson_mixed_followup");
+
+        var result = new TcpModelEngine().Evaluate(
+            model,
+            UniformCumulativeDvh("Prostate", 68.0),
+            new TcpEvaluationContext
+            {
+                Fractions = 34,
+                DosePerFractionGy = 2.0,
+                TotalPrescriptionDoseGy = 68.0,
+                Diagnosis = "prostate_cancer",
                 Setting = "definitive_ebrt"
+            });
+
+        Assert.Equal(TcpEvaluationStatus.MissingInputs, result.Status);
+        Assert.Contains("target_role", result.MissingInputs);
+        Assert.Null(result.Probability);
+    }
+
+    [Fact]
+    public void TargetDvhModel_RejectsExplicitPtvProxyRole()
+    {
+        var model = LoadModel(
+            "sachpazidis_2020_prostate_gland_lq_poisson_mixed_followup");
+
+        var result = new TcpModelEngine().Evaluate(
+            model,
+            UniformCumulativeDvh("PTV_74", 74.0),
+            new TcpEvaluationContext
+            {
+                Fractions = 37,
+                DosePerFractionGy = 2.0,
+                TotalPrescriptionDoseGy = 74.0,
+                Diagnosis = "prostate_cancer",
+                Setting = "definitive_ebrt",
+                TargetRole = "ptv"
             });
 
         Assert.Equal(TcpEvaluationStatus.NotApplicable, result.Status);
