@@ -209,11 +209,11 @@
         "pmid": "32900561",
         "doi": "10.1016/j.ijrobp.2020.08.014"
       },
-      "status": "reference_candidate",
-      "implementation_notes": "Prescription-dose model, not a DVH model. The low D50 arises from fitting a steep high-control region and must not be interpreted as evidence that ~20 Gy EQD2 is clinically adequate.",
+      "status": "source_inconsistency_unresolved",
+      "implementation_notes": "The source reports D50=20.6 Gy and gamma=0.15, but those values inserted into the paper's displayed Poisson equation do not reproduce the same paper's stated 5-year predictions of 90% at EQD2=71 Gy and 95% at EQD2=90 Gy. BioRT preserves the published values but disables runtime calculation until the discrepancy is resolved from supplementary/source data or author clarification.",
       "implementation": {
         "input_mode": "prescription_dose",
-        "runtime_enabled": true,
+        "runtime_enabled": false,
         "minimum_fractions": 4,
         "maximum_fractions": 5,
         "required_context_fields": [
@@ -221,7 +221,8 @@
           "risk_group",
           "setting"
         ],
-        "runtime_note": "Only use when risk group is explicitly low/intermediate and the evaluated scalar dose is the source-compatible prostate SBRT prescription dose."
+        "runtime_note": "Do not repair or substitute gamma by inference. The source discrepancy must remain explicit.",
+        "runtime_reason": "Runtime disabled: published low/intermediate-risk D50/gamma values are numerically inconsistent with the paper's own stated 90%/95% TCP dose points under the displayed equation."
       }
     },
     {
@@ -281,7 +282,7 @@
           "risk_group",
           "setting"
         ],
-        "runtime_note": "High-risk pooled model with limited source sample size."
+        "runtime_note": "The published D50=84.2 Gy and gamma=4.50 reproduce the paper's stated approximately 90% TCP at EQD2=97 Gy and 95% at EQD2=102 Gy. Source sample remains limited (85 patients from 3 studies)."
       }
     }
   ],
