@@ -426,9 +426,253 @@ internal class Program
 
             PrintNtcpResult(result);
         }
+        // ================= TCP =================
+
+        Console.WriteLine();
+        Console.WriteLine("TCP — explicit provenance-aware model selection:");
+
+        if (clinicalContext == null ||
+            string.IsNullOrWhiteSpace(clinicalContext.Tcp.ModelId))
+        {
+            Console.WriteLine(
+                "TCP not requested. Add tcp.model_id to clinical_context.json to evaluate a specific validated model.");
+        }
+        else
+        {
+            string tcpLibraryPath = Path.Combine(
+                dataPath, "tcp_parameters_v2.json");
+
+            if (!File.Exists(tcpLibraryPath))
+            {
+                Console.WriteLine(
+                    $"ERROR: TCP parameter library not found: {tcpLibraryPath}");
+            }
+            else
+            {
+                try
+                {
+                    var tcpLibrary = TcpModelLibrary.Load(tcpLibraryPath);
+                    TcpModelDefinition? tcpModel =
+                        tcpLibrary.FindById(clinicalContext.Tcp.ModelId!);
+
+                    if (tcpModel == null)
+                    {
+                        Console.WriteLine(
+                            $"ERROR: TCP model ID not found: {clinicalContext.Tcp.ModelId}");
+                    }
+                    else
+                    {
+                        var tcpContext = ClinicalContextMapper.ToTcpEvaluationContext(
+                            clinicalContext,
+                            fractions: plan.Fractions > 0
+                                ? plan.Fractions
+                                : null,
+                            dosePerFractionGy: plan.DosePerFraction > 0
+                                ? plan.DosePerFraction
+                                : null,
+                            totalPrescriptionDoseGy: plan.TotalDose > 0
+                                ? plan.TotalDose
+                                : null);
+
+                        StructureDVH? tcpTargetDvh = null;
+                        bool targetReady = true;
+
+                        if (string.Equals(
+                                tcpModel.Implementation?.InputMode,
+                                "target_dvh",
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (string.IsNullOrWhiteSpace(
+                                    clinicalContext.Tcp.TargetStructureName))
+                            {
+                                Console.WriteLine(
+                                    "TCP [MissingInputs]: tcp.target_structure_name is required for this target-DVH model.");
+                                targetReady = false;
+                            }
+                            else
+                            {
+                                tcpTargetDvh = EnsureExactStructureDvh(
+                                    clinicalContext.Tcp.TargetStructureName!,
+                                    roiNames,
+                                    contours,
+                                    plan.Dose,
+                                    plan.DVHs,
+                                    structureVolumesCc,
+                                    structureMasks,
+                                    voxelVolumeCc,
+                                    out string? targetError);
+
+                                if (tcpTargetDvh == null)
+                                {
+                                    Console.WriteLine(
+                                        $"TCP [MissingInputs]: {targetError}");
+                                    targetReady = false;
+                                }
+                                else
+                                {
+                                    Console.WriteLine(
+                                        $"TCP target: {tcpTargetDvh.Name}" +
+                                        (structureVolumesCc.TryGetValue(
+                                            tcpTargetDvh.Name,
+                                            out double tcpTargetVolume)
+                                            ? $" | volume={tcpTargetVolume:F2} cm³"
+                                            : ""));
+                                }
+                            }
+                        }
+
+                        if (targetReady)
+                        {
+                            var tcpResult = new TcpModelEngine().Evaluate(
+                                tcpModel,
+                                tcpTargetDvh,
+                                tcpContext);
+
+                            PrintTcpResult(tcpResult);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"ERROR: TCP evaluation failed safely: {ex.Message}");
+                }
+            }
+        }
         Console.WriteLine();
         Console.WriteLine("Finished successfully.");
         Console.ReadKey();
+    }
+
+    private static StructureDVH? EnsureExactStructureDvh(
+        string requestedStructureName,
+        Dictionary<int, string> roiNames,
+        Dictionary<int, List<double[]>> contours,
+        DoseVolume dose,
+        Dictionary<string, StructureDVH> dvhs,
+        Dictionary<string, double> structureVolumesCc,
+        Dictionary<string, StructureMask> structureMasks,
+        double voxelVolumeCc,
+        out string? error)
+    {
+        error = null;
+
+        var existing = dvhs.Values
+            .Where(d => string.Equals(
+                d.Name,
+                requestedStructureName,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (existing.Length == 1)
+            return existing[0];
+
+        if (existing.Length > 1)
+        {
+            error =
+                $"Multiple already-calculated DVHs match exact TCP target name '{requestedStructureName}'.";
+            return null;
+        }
+
+        var matches = roiNames
+            .Where(r => string.Equals(
+                r.Value,
+                requestedStructureName,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (matches.Length == 0)
+        {
+            error =
+                $"Exact RTSTRUCT ROI '{requestedStructureName}' was not found. TCP target names are not fuzzy-matched.";
+            return null;
+        }
+
+        if (matches.Length > 1)
+        {
+            error =
+                $"RTSTRUCT contains multiple exact case-insensitive matches for TCP target '{requestedStructureName}'.";
+            return null;
+        }
+
+        var match = matches[0];
+
+        if (!contours.TryGetValue(match.Key, out var targetContours) ||
+            targetContours.Count == 0)
+        {
+            error =
+                $"TCP target '{match.Value}' has no usable contours.";
+            return null;
+        }
+
+        var mask = MaskBuilder.BuildMask(
+            match.Value,
+            targetContours,
+            dose);
+
+        var calculated = DVHCalculator.Calculate(mask, dose);
+
+        if (calculated == null)
+        {
+            error =
+                $"DVH calculation failed for TCP target '{match.Value}'.";
+            return null;
+        }
+
+        structureVolumesCc[match.Value] =
+            mask.Mask.Cast<bool>().Count(v => v) * voxelVolumeCc;
+
+        structureMasks[match.Value] = mask;
+
+        var result = new StructureDVH
+        {
+            Name = match.Value,
+            MeanDose = calculated.MeanDose,
+            MaxDose = calculated.MaxDose,
+            Dose = calculated.DoseBins,
+            Volume = calculated.VolumeBins
+        };
+
+        dvhs[match.Value] = result;
+
+        return result;
+    }
+
+    private static void PrintTcpResult(TcpEvaluationResult result)
+    {
+        string probability = result.Probability is double value
+            ? $"{value * 100.0:F2}%"
+            : "n/a";
+
+        Console.WriteLine(
+            $"  {result.ModelId,-52} {probability,8}  [{result.Status}]");
+
+        Console.WriteLine(
+            $"    Endpoint: {result.EndpointName}" +
+            (string.IsNullOrWhiteSpace(result.TimePoint)
+                ? ""
+                : $" | {result.TimePoint}"));
+
+        if (result.EffectiveDoseGy is double effectiveDose)
+        {
+            Console.WriteLine(
+                $"    Effective dose: {effectiveDose:F2} Gy" +
+                (string.IsNullOrWhiteSpace(result.AppliedDoseBasis)
+                    ? ""
+                    : $" | basis={result.AppliedDoseBasis}"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Pmid))
+            Console.WriteLine($"    Source: PMID {result.Pmid}");
+
+        if (result.MissingInputs.Count > 0)
+        {
+            Console.WriteLine(
+                $"    Missing inputs: {string.Join(", ", result.MissingInputs)}");
+        }
+
+        foreach (string warning in result.Warnings)
+            Console.WriteLine($"    WARNING: {warning}");
     }
 
     private static string? FindCriteriaJsonPath(string rootPath)
