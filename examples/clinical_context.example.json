@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1.0",
+  "patient": {
+    "age_years": 68,
+    "smoking_status": "former",
+    "months_since_smoking_cessation": 24,
+    "pulmonary_comorbidity": false
+  },
+  "tumor": {
+    "diagnosis": "NSCLC",
+    "histology": "squamous_cell_carcinoma",
+    "stage": "IIIA",
+    "location": "superior",
+    "laterality": "right"
+  },
+  "treatment": {
+    "chemotherapy_sequence": "concurrent",
+    "immunotherapy": false
+  },
+  "baseline": {
+    "xerostomia": "none"
+  },
+  "model_overrides": {
+    "numeric": {},
+    "categorical": {}
+  }
+}
