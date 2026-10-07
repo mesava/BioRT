@@ -28,20 +28,6 @@ public class DicomImporter
                 var sop = ds.GetSingleValueOrDefault(
                     DicomTag.SOPClassUID, "");
 
-                // ================= RTPLAN =================
-                if (sop == DicomUID.RTPlanStorage.UID)
-                {
-                    Console.WriteLine($"RTPLAN   : {Path.GetFileName(f)}");
-                    ReadPlan(dicom, plan);
-                }
-
-                // ================= RTDOSE =================
-                else if (sop == DicomUID.RTDoseStorage.UID)
-                {
-                    Console.WriteLine($"RTDOSE   : {Path.GetFileName(f)}");
-                    plan.Dose = _doseReader.Read(dicom);
-                }
-
                 // ================= RTSTRUCT =================
                 else if (sop == DicomUID.RTStructureSetStorage.UID)
                 {
