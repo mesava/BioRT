@@ -1,0 +1,29 @@
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <header class="topbar">
+        <a class="brand" href="./" aria-label="BioRT">
+            <span class="brand-mark">B</span>
+            <span>
+                <strong>BioRT</strong>
+                <small>TCP / NTCP из DICOM</small>
+            </span>
+        </a>
+
+        <nav class="topnav" aria-label="Основная навигация">
+            <a href="#calculator">Калькулятор</a>
+            <a href="#models">Модели</a>
+            <a href="#science">Научная база</a>
+            <a href="#privacy">Данные</a>
+        </nav>
+    </header>
+
+    <main>
+        @Body
+    </main>
+
+    <footer class="footer">
+        <span>BioRT · исследовательский инструмент поддержки решений</span>
+        <span>Не предназначен для первичного клинического решения.</span>
+    </footer>
+</div>
