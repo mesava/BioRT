@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BioRT.Core\BioRT.Core.csproj" />
+    <ProjectReference Include="..\BioRT.IO\BioRT.IO.csproj" />
   </ItemGroup>
 
   <ItemGroup>

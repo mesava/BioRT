@@ -281,6 +281,125 @@ h3 {
     font-size: 1.6rem;
 }
 
+.file-input {
+    width: min(100%, 560px);
+    margin-top: 8px;
+    padding: 12px;
+    color: #435761;
+    background: white;
+    border: 1px solid #d7e3e7;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.file-input:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.file-hint {
+    color: #7d8d95;
+    font-size: .82rem;
+}
+
+.import-state,
+.import-result {
+    margin-top: 16px;
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid #d9e5e8;
+    background: #f8fbfc;
+}
+
+.import-state {
+    display: grid;
+    gap: 5px;
+    color: #566c76;
+}
+
+.import-state.error {
+    color: #7d3939;
+    background: #fff5f5;
+    border-color: #eccdcd;
+}
+
+.import-result-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    color: #47606b;
+}
+
+.import-result-heading > div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.import-result-heading > span {
+    color: #809099;
+    font-size: .8rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2b9b6b;
+    box-shadow: 0 0 0 5px rgba(43, 155, 107, .12);
+}
+
+.import-stats {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.import-stats article {
+    padding: 14px;
+    border-radius: 13px;
+    background: white;
+    border: 1px solid #e0e8eb;
+}
+
+.metric-value.small {
+    font-size: 1.55rem;
+}
+
+.source-files {
+    margin-top: 14px;
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.source-files span {
+    padding: 6px 9px;
+    color: #5e717b;
+    background: #edf4f6;
+    border-radius: 8px;
+    font-size: .76rem;
+    overflow-wrap: anywhere;
+}
+
+.import-warnings {
+    margin-top: 14px;
+    color: #6d5b32;
+    font-size: .82rem;
+}
+
+.import-warnings summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.import-warnings ul {
+    margin-bottom: 0;
+    padding-left: 19px;
+}
+
 .pipeline {
     margin-top: 18px;
     display: flex;
@@ -560,8 +679,14 @@ dd {
     }
 
     .hero-metrics,
-    .model-grid {
+    .model-grid,
+    .import-stats {
         grid-template-columns: 1fr;
+    }
+
+    .import-result-heading {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .footer {

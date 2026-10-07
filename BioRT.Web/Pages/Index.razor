@@ -1,5 +1,6 @@
 @page "/"
 @inject ModelCatalogService Catalog
+@inject DicomBundleImporter DicomImporter
 
 <PageTitle>BioRT — TCP / NTCP из DICOM</PageTitle>
 
@@ -19,8 +20,9 @@
 
         <div class="notice">
             <strong>Режим разработки.</strong>
-            На этом этапе сайт уже публикует модельный каталог.
-            Клиентская обработка DICOM будет подключена следующим этапом.
+            Сайт уже читает RTPLAN / RTDOSE / RTSTRUCT локально в браузере
+            и проверяет связность набора. Полный DVH → TCP/NTCP расчёт
+            подключается следующим этапом.
         </div>
     </div>
 
@@ -52,14 +54,85 @@
     </div>
 
     <div class="calculator-card">
-        <div class="dropzone disabled" aria-disabled="true">
+        <label class="dropzone">
             <span class="drop-icon">↥</span>
-            <strong>Загрузка DICOM будет включена в следующем этапе</strong>
+            <strong>Выберите RTPLAN / RTDOSE / RTSTRUCT</strong>
             <span>
-                План: ZIP или набор RTPLAN / RTDOSE / RTSTRUCT +
-                criteria JSON + optional clinical_context.json.
+                Файлы читаются непосредственно в вашем браузере.
+                BioRT не отправляет выбранный DICOM на сервер.
             </span>
-        </div>
+
+            <InputFile class="file-input"
+                       OnChange="HandleDicomFiles"
+                       multiple
+                       disabled="@IsImporting" />
+
+            <span class="file-hint">
+                Пока выбирайте один согласованный набор: 1 RTPLAN + 1 RTDOSE + 1 RTSTRUCT.
+            </span>
+        </label>
+
+        @if (IsImporting)
+        {
+            <div class="import-state">
+                <strong>Читаю DICOM…</strong>
+                <span>Проверяю SOP Class и загружаю только необходимые RT-объекты.</span>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(ImportError))
+        {
+            <div class="import-state error">
+                <strong>Набор не принят</strong>
+                <span>@ImportError</span>
+            </div>
+        }
+        else if (ImportedDicom != null)
+        {
+            <div class="import-result">
+                <div class="import-result-heading">
+                    <div>
+                        <span class="status-dot"></span>
+                        <strong>DICOM-набор прочитан локально</strong>
+                    </div>
+                    <span>Patient ID намеренно не показывается в web UI.</span>
+                </div>
+
+                <div class="import-stats">
+                    <article>
+                        <span class="metric-value small">@ImportedDicom.Plan.Fractions</span>
+                        <span class="metric-label">фракций</span>
+                    </article>
+                    <article>
+                        <span class="metric-value small">@ImportedDicom.Plan.DosePerFraction.ToString("F3")</span>
+                        <span class="metric-label">Gy / fx</span>
+                    </article>
+                    <article>
+                        <span class="metric-value small">@ImportedDicom.StructureNames.Count</span>
+                        <span class="metric-label">ROI в RTSTRUCT</span>
+                    </article>
+                </div>
+
+                <div class="source-files">
+                    @foreach (string source in ImportedDicom.SourceFiles)
+                    {
+                        <span>@source</span>
+                    }
+                </div>
+
+                @if (ImportedDicom.Warnings.Count > 0)
+                {
+                    <details class="import-warnings">
+                        <summary>Предупреждения: @ImportedDicom.Warnings.Count</summary>
+                        <ul>
+                            @foreach (string warning in ImportedDicom.Warnings)
+                            {
+                                <li>@warning</li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </div>
+        }
 
         <div class="pipeline">
             <span>DICOM</span>
@@ -180,6 +253,13 @@
 </section>
 
 @code {
+    private const long MaxBrowserFileSize =
+        512L * 1024L * 1024L;
+
+    private DicomImportResult? ImportedDicom;
+    private string? ImportError;
+    private bool IsImporting;
+
     private IReadOnlyList<CatalogModel> NtcpModels = Array.Empty<CatalogModel>();
     private IReadOnlyList<CatalogModel> TcpModels = Array.Empty<CatalogModel>();
     private string _filter = "all";
@@ -204,6 +284,45 @@
     {
         NtcpModels = Catalog.LoadNtcpModels();
         TcpModels = Catalog.LoadTcpModels();
+    }
+
+    private async Task HandleDicomFiles(
+        InputFileChangeEventArgs args)
+    {
+        ImportedDicom = null;
+        ImportError = null;
+        IsImporting = true;
+
+        try
+        {
+            IReadOnlyList<IBrowserFile> files =
+                args.GetMultipleFiles(maximumFileCount: 50);
+
+            if (files.Count == 0)
+            {
+                ImportError = "Не выбраны файлы.";
+                return;
+            }
+
+            DicomInputFile[] inputs =
+                files
+                    .Select(file =>
+                        BrowserDicomInputFileFactory.Create(
+                            file,
+                            MaxBrowserFileSize))
+                    .ToArray();
+
+            ImportedDicom =
+                await DicomImporter.LoadAsync(inputs);
+        }
+        catch (Exception ex)
+        {
+            ImportError = ex.Message;
+        }
+        finally
+        {
+            IsImporting = false;
+        }
     }
 
     private void SetFilter(string filter)
