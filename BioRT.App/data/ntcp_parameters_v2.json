@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "schema_version": "0.4.0",
-    "library_version": "2026.10-multi-organ-v1",
+    "schema_version": "0.5.0",
+    "library_version": "2026.10-multi-organ-v2",
     "status": "research_validation",
-    "scope": "Provenance-aware NTCP library for BioRT; currently xerostomia and spinal-cord myelopathy evidence/model records.",
+    "scope": "Provenance-aware NTCP library for BioRT; currently xerostomia, spinal-cord myelopathy, and lung radiation-pneumonitis evidence/model records.",
     "clinical_use_warning": "Decision support and model validation only. A model must not be used outside its endpoint, time point, structure definition, dose basis and treatment context without explicit review/recalibration.",
     "selection_principle": "Parameter sets are stored as indivisible model-specific records. Coefficients from different studies or time points must not be averaged or mixed.",
     "runtime_selection_note": "The implementation block is machine-readable and defines canonical structure, required input topology and runtime eligibility. Runtime eligibility does not imply clinical validation.",
@@ -751,6 +751,494 @@
         "input_mode": "multicourse_reirradiation",
         "runtime_enabled": false,
         "runtime_reason": "Experimental proof-of-concept model; exact coefficient sequence and multi-course inputs are not implemented."
+      }
+    }
+  ],
+  "lung_models": [
+    {
+      "id": "semenenko_li_2008_lung_rp_lkb_total_lung",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "paired/combined lung as used in the pooled published datasets",
+      "endpoint": {
+        "name": "symptomatic radiation pneumonitis",
+        "measurement": "clinical symptomatic RP",
+        "definition": "symptomatic radiation pneumonitis in pooled published datasets",
+        "time_point": "post-radiotherapy symptomatic toxicity"
+      },
+      "parameters": {
+        "td50_gy": 29.9,
+        "td50_ci95_gy": [
+          28.2,
+          31.8
+        ],
+        "m": 0.41,
+        "m_ci95": [
+          0.38,
+          0.45
+        ],
+        "n": 1,
+        "n_fitting": "fixed"
+      },
+      "dose_basis": {
+        "metric": "mean combined-lung dose",
+        "fractionation_correction": "For source datasets using daily fractions other than 2 Gy, mean organ doses were converted to 2-Gy-fraction equivalent dose.",
+        "alpha_beta_gy": 3
+      },
+      "cohort": {
+        "type": "combined analysis of published multi-institutional clinical datasets"
+      },
+      "source": {
+        "citation": "Semenenko VA, Li XA. Lyman-Kutcher-Burman NTCP model parameters for radiation pneumonitis and xerostomia based on combined analysis of published clinical data. Phys Med Biol. 2008.",
+        "pmid": "18199912",
+        "doi": "10.1088/0031-9155/53/3/014"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Transparent pooled LKB benchmark with n fixed to 1. The exact lung contouring convention varied among contributing source datasets, so the structure definition must be reviewed before absolute-risk use.",
+      "implementation": {
+        "canonical_structure": "lung_total",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "requires_eqd2_when_fraction_size_differs": true,
+        "fractionation_transform": "mean_dose_eqd2_if_prescription_fraction_differs",
+        "fractionation_note": "Reproduces the source convention: pooled mean lung doses were converted to 2-Gy-equivalent dose when daily fractions differed from 2 Gy. This does not establish validity for SBRT."
+      }
+    },
+    {
+      "id": "semenenko_li_2008_lung_rp_lkb_ipsilateral",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "ipsilateral lung",
+      "endpoint": {
+        "name": "symptomatic radiation pneumonitis",
+        "measurement": "clinical symptomatic RP",
+        "definition": "RP incidence evaluated against ipsilateral-lung dose",
+        "time_point": "post-radiotherapy symptomatic toxicity"
+      },
+      "parameters": {
+        "td50_gy": 37.6,
+        "td50_ci95_gy": [
+          34.6,
+          41.4
+        ],
+        "m": 0.35,
+        "m_ci95": [
+          0.29,
+          0.43
+        ],
+        "n": 1,
+        "n_fitting": "fixed"
+      },
+      "dose_basis": {
+        "metric": "mean ipsilateral-lung dose",
+        "fractionation_correction": "For source datasets using daily fractions other than 2 Gy, mean organ doses were converted to 2-Gy-fraction equivalent dose.",
+        "alpha_beta_gy": 3
+      },
+      "cohort": {
+        "type": "combined analysis of published clinical datasets using ipsilateral-lung dose"
+      },
+      "source": {
+        "citation": "Semenenko VA, Li XA. Lyman-Kutcher-Burman NTCP model parameters for radiation pneumonitis and xerostomia based on combined analysis of published clinical data. Phys Med Biol. 2008.",
+        "pmid": "18199912",
+        "doi": "10.1088/0031-9155/53/3/014"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Use only when an explicitly ipsilateral lung structure is available; BioRT must not infer tumor laterality from a generic lung contour.",
+      "implementation": {
+        "canonical_structure": "lung_ipsilateral",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "reference_fraction_size_gy": 2,
+        "requires_eqd2_when_fraction_size_differs": true,
+        "fractionation_transform": "mean_dose_eqd2_if_prescription_fraction_differs"
+      }
+    },
+    {
+      "id": "quantec_2010_lung_rp_logistic_mld",
+      "model_family": "univariable_logistic",
+      "equation_id": "logistic",
+      "structure_definition": "combined lung in pooled conventional-fractionation datasets",
+      "endpoint": {
+        "name": "symptomatic radiation pneumonitis",
+        "measurement": "clinical RP",
+        "definition": "symptomatic RP in pooled QUANTEC lung datasets",
+        "time_point": "post-radiotherapy symptomatic toxicity"
+      },
+      "parameters": {
+        "intercept": -3.87,
+        "predictors": [
+          {
+            "name": "mean_lung_dose_gy",
+            "coefficient": 0.126,
+            "auto_source": "dvh_mean_dose_gy"
+          }
+        ],
+        "td50_gy": 30.75,
+        "td50_ci95_gy": [
+          28.7,
+          33.9
+        ],
+        "gamma50": 0.969,
+        "gamma50_ci95": [
+          0.833,
+          1.122
+        ]
+      },
+      "dose_basis": {
+        "metric": "physical mean lung dose",
+        "fractionation_correction": "Model summarized predominantly conventional 3D-CRT data; no runtime EQD2 transform is applied to this logistic fit."
+      },
+      "cohort": {
+        "type": "QUANTEC pooled re-analysis of published lung dose-response datasets",
+        "technique_context": "predominantly 3D conformal radiotherapy"
+      },
+      "source": {
+        "citation": "Marks LB et al. Radiation dose-volume effects in the lung. IJROBP. 2010.",
+        "pmid": "20171521",
+        "doi": "10.1016/j.ijrobp.2009.06.091"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "QUANTEC explicitly cautions that the MLD-RP relationship may be less predictive for nonstandard dose distributions such as SBRT, IMRT, or proton therapy. Modern cohorts also show calibration drift.",
+      "implementation": {
+        "canonical_structure": "lung_total",
+        "input_mode": "single_structure_predictor_vector",
+        "runtime_enabled": true,
+        "minimum_prescription_fraction_size_gy": 1.8,
+        "maximum_prescription_fraction_size_gy": 2,
+        "runtime_note": "Conventional-fractionation historical reference. Treat absolute risk as a benchmark, not a universally calibrated modern prediction."
+      }
+    },
+    {
+      "id": "quantec_2010_lung_rp_lkb_probit_mld",
+      "model_family": "LKB_mean_dose",
+      "equation_id": "lkb_probit",
+      "structure_definition": "combined lung in pooled conventional-fractionation datasets",
+      "endpoint": {
+        "name": "symptomatic radiation pneumonitis",
+        "measurement": "clinical RP",
+        "definition": "probit/Lyman fit to the same pooled MLD response used in the QUANTEC lung review",
+        "time_point": "post-radiotherapy symptomatic toxicity"
+      },
+      "parameters": {
+        "td50_gy": 31.4,
+        "td50_ci95_gy": [
+          29,
+          34.7
+        ],
+        "m": 0.45,
+        "m_ci95": [
+          0.39,
+          0.51
+        ],
+        "n": 1
+      },
+      "dose_basis": {
+        "metric": "physical mean lung dose",
+        "fractionation_correction": "No separate runtime fractionation transform is applied; restrict to the conventional-fractionation domain."
+      },
+      "cohort": {
+        "type": "QUANTEC pooled lung dose-response data"
+      },
+      "source": {
+        "citation": "Marks LB et al. Radiation dose-volume effects in the lung. IJROBP. 2010.",
+        "pmid": "20171521",
+        "doi": "10.1016/j.ijrobp.2009.06.091"
+      },
+      "status": "reference_candidate",
+      "implementation_notes": "Mathematically equivalent to an n=1 Lyman fit of the QUANTEC pooled MLD response; retained to cross-check the BioRT LKB implementation against the logistic fit.",
+      "implementation": {
+        "canonical_structure": "lung_total",
+        "input_mode": "single_structure_dvh",
+        "runtime_enabled": true,
+        "minimum_prescription_fraction_size_gy": 1.8,
+        "maximum_prescription_fraction_size_gy": 2,
+        "reference_fraction_size_gy": 2
+      }
+    },
+    {
+      "id": "appelt_2014_lung_rp_individualized_logistic",
+      "model_family": "multivariable_logistic",
+      "equation_id": "logistic",
+      "structure_definition": "lung mean dose used with the individualized QUANTEC-based risk model",
+      "endpoint": {
+        "name": "symptomatic radiation pneumonitis",
+        "measurement": "clinical RP",
+        "definition": "individualized RP risk based on MLD plus six clinical risk factors",
+        "time_point": "post-radiotherapy symptomatic toxicity"
+      },
+      "parameters": {
+        "intercept": -4.76,
+        "predictors": [
+          {
+            "name": "mean_lung_dose_gy",
+            "coefficient": 0.138,
+            "auto_source": "dvh_mean_dose_gy"
+          },
+          {
+            "name": "smoking_status",
+            "coding": {
+              "never": 0,
+              "current": -0.48,
+              "former": -0.37
+            }
+          },
+          {
+            "name": "pulmonary_comorbidity",
+            "coding": {
+              "no": 0,
+              "yes": 0.82
+            }
+          },
+          {
+            "name": "age_over_63",
+            "coding": {
+              "no": 0,
+              "yes": 0.51
+            }
+          },
+          {
+            "name": "sequential_chemotherapy",
+            "coding": {
+              "no": 0,
+              "yes": 0.47
+            }
+          },
+          {
+            "name": "tumor_location_mid_or_inferior",
+            "coding": {
+              "no": 0,
+              "yes": 0.63
+            }
+          }
+        ],
+        "baseline_d50_gy": 34.4,
+        "baseline_gamma50": 1.19
+      },
+      "dose_basis": {
+        "metric": "physical mean lung dose",
+        "fractionation_correction": "No automatic EQD2 transform is applied; the model is tied to its published/validated treatment context."
+      },
+      "cohort": {
+        "type": "QUANTEC dose-response adjusted using meta-analytic clinical risk factors and tested in an independent 103-patient dataset"
+      },
+      "source": {
+        "citation": "Appelt AL et al. Towards individualized dose constraints: Adjusting the QUANTEC radiation pneumonitis model for clinical risk factors. Acta Oncol. 2014.",
+        "pmid": "23957623",
+        "doi": "10.3109/0284186X.2013.820341"
+      },
+      "status": "externally_tested_reference",
+      "implementation_notes": "Clinical risk-factor coding is mandatory. Later external validations have shown that calibration can drift substantially across modern cohorts.",
+      "implementation": {
+        "canonical_structure": "lung_total",
+        "input_mode": "single_structure_predictor_vector",
+        "runtime_enabled": true,
+        "minimum_prescription_fraction_size_gy": 1.8,
+        "maximum_prescription_fraction_size_gy": 2,
+        "required_categorical_predictors": [
+          "smoking_status",
+          "pulmonary_comorbidity",
+          "age_over_63",
+          "sequential_chemotherapy",
+          "tumor_location_mid_or_inferior"
+        ]
+      }
+    },
+    {
+      "id": "niezink_2023_new_rp_logistic",
+      "model_family": "multivariable_logistic",
+      "equation_id": "logistic",
+      "structure_definition": "bilateral lungs excluding GTV (Lungs-GTV)",
+      "endpoint": {
+        "name": "grade 2 or higher radiation pneumonitis",
+        "measurement": "CTCAE v4.0",
+        "definition": "grade >=2 RP scored from 6 weeks through 6 months after treatment",
+        "time_point": "6 weeks to 6 months after radiotherapy"
+      },
+      "parameters": {
+        "intercept": -7.88,
+        "predictors": [
+          {
+            "name": "mean_lung_dose_gy",
+            "coefficient": 0.25,
+            "auto_source": "dvh_mean_dose_gy"
+          },
+          {
+            "name": "age_years",
+            "coefficient": 0.049
+          },
+          {
+            "name": "smoking_current_or_quit_lt3m",
+            "coding": {
+              "no": 0,
+              "yes": -0.902
+            }
+          }
+        ]
+      },
+      "dose_basis": {
+        "metric": "physical MLD of automatically contoured Lungs-GTV",
+        "fractionation_correction": "No EQD2 transform reported for the model; treatment cohort received 45-60 Gy in 25-30 fractions and excluded SBRT."
+      },
+      "cohort": {
+        "patients": 612,
+        "disease": "NSCLC or SCLC treated with definitive radiotherapy/chemoradiotherapy",
+        "treatment_period": "2013-2018",
+        "technique": "hybrid 3DCRT+IMRT/VMAT or full IMRT/VMAT",
+        "rp_grade2plus_percent": 14.5,
+        "internal_bootstrap_corrected_slope": 0.95,
+        "auc": 0.787
+      },
+      "source": {
+        "citation": "Niezink AGH et al. External validation of NTCP-models for radiation pneumonitis in lung cancer patients treated with chemoradiotherapy. Radiother Oncol. 2023.",
+        "pmid": "37327975",
+        "doi": "10.1016/j.radonc.2023.109735"
+      },
+      "status": "updated_model_internal_validation",
+      "implementation_notes": "The study externally validated older QUANTEC/Appelt models, then derived this updated three-predictor model in the 612-patient cohort with bootstrap internal validation. It should not be labeled independently externally validated.",
+      "implementation": {
+        "canonical_structure": "lung_total_minus_gtv",
+        "input_mode": "single_structure_predictor_vector",
+        "runtime_enabled": true,
+        "minimum_prescription_fraction_size_gy": 1.5,
+        "maximum_prescription_fraction_size_gy": 2.4,
+        "required_predictors": [
+          "age_years"
+        ],
+        "required_categorical_predictors": [
+          "smoking_current_or_quit_lt3m"
+        ],
+        "runtime_note": "SBRT was excluded from the source cohort. Absolute-risk calibration should be checked before local clinical interpretation."
+      }
+    },
+    {
+      "id": "estro_2025_lung_rp_conventional_guideline_reference",
+      "model_family": "clinical_guideline_reference",
+      "equation_id": "reference_constraint_table",
+      "structure_definition": "normal lung defined as both lungs minus GTV",
+      "endpoint": {
+        "name": "radiation pneumonitis",
+        "measurement": "clinical RP risk stratification",
+        "definition": "expert-guideline dose-volume risk context for curative-intent conventionally fractionated lung radiotherapy",
+        "time_point": "post-radiotherapy"
+      },
+      "parameters": {
+        "typical": {
+          "v20_percent_lt": 35,
+          "mean_lung_dose_gy_lt": 23
+        },
+        "medium_risk_examples": {
+          "v20_percent_gt": 35,
+          "mean_lung_dose_gy_gt": 23
+        },
+        "high_risk_examples": {
+          "v20_percent_gt": 45,
+          "mean_lung_dose_gy_gt": 30
+        }
+      },
+      "dose_basis": {
+        "metric": "physical dose; both lungs minus GTV"
+      },
+      "cohort": {
+        "type": "ESTRO clinical practice guideline / expert consensus synthesis"
+      },
+      "source": {
+        "citation": "De Ruysscher D et al. Diagnosis and treatment of radiation induced pneumonitis in patients with lung cancer: An ESTRO clinical practice guideline. Radiother Oncol. 2025.",
+        "pmid": "40185160",
+        "doi": "10.1016/j.radonc.2025.110837"
+      },
+      "status": "reference_evidence",
+      "implementation_notes": "This is clinical guideline context, not a continuous NTCP model. It should be displayed alongside model predictions rather than converted into a fabricated probability.",
+      "implementation": {
+        "canonical_structure": "lung_total_minus_gtv",
+        "input_mode": "reference_table",
+        "runtime_enabled": false,
+        "runtime_reason": "Guideline risk categories/constraints are stored as evidence and are not interpolated into an NTCP curve."
+      }
+    },
+    {
+      "id": "lung_sbrt_hytec_reference",
+      "model_family": "dose_constraint_reference",
+      "equation_id": "reference_constraint_table",
+      "structure_definition": "normal lung in lung SBRT",
+      "endpoint": {
+        "name": "lung toxicity / radiation pneumonitis",
+        "measurement": "clinical lung toxicity after SBRT",
+        "definition": "HyTEC-derived dose-volume guidance summarized in contemporary SBRT analyses",
+        "time_point": "post-SBRT"
+      },
+      "parameters": {
+        "mean_lung_dose_gy_lt": 8,
+        "v20_percent_lt_range": [
+          10,
+          15
+        ]
+      },
+      "dose_basis": {
+        "metric": "physical SBRT lung dose-volume metrics",
+        "fractionation_correction": "Use published SBRT dose-volume guidance directly; do not extrapolate conventional QUANTEC/LKB models via EQD2."
+      },
+      "cohort": {
+        "type": "HyTEC-era SBRT evidence synthesis"
+      },
+      "source": {
+        "citation": "Moiseenko V et al. Dose-Volume Predictors of Radiation Pneumonitis After Lung SBRT: Implications for Practice and Trial Design. Cureus. 2020; summarizes recently published HyTEC lung guidance.",
+        "pmid": "33163312",
+        "doi": "10.7759/cureus.10808"
+      },
+      "status": "reference_evidence",
+      "implementation_notes": "Stored as SBRT-specific evidence only. The exact HyTEC source chain should be reviewed before promoting this record to a formal clinical constraint evaluator.",
+      "implementation": {
+        "canonical_structure": "lung_total_minus_gtv",
+        "input_mode": "reference_table",
+        "runtime_enabled": false,
+        "runtime_reason": "SBRT reference guidance is intentionally separate from conventional continuous NTCP models."
+      }
+    },
+    {
+      "id": "chen_2026_lung_rp_model_d_evidence",
+      "model_family": "multivariable_logistic_evidence",
+      "equation_id": "evidence_only",
+      "structure_definition": "total bilateral lung; V30 defined as percent volume receiving >=30 Gy",
+      "endpoint": {
+        "name": "grade 2 or higher radiation pneumonitis",
+        "measurement": "clinical RP",
+        "definition": "contemporary IMRT multimodal-therapy RP prediction",
+        "time_point": "post-radiotherapy"
+      },
+      "parameters": {
+        "development_patients": 580,
+        "external_validation_patients": 100,
+        "development_auc": 0.708,
+        "external_auc": 0.718,
+        "external_auc_ci95": [
+          0.576,
+          0.831
+        ],
+        "external_brier": 0.207,
+        "external_calibration_intercept": -1.043,
+        "external_calibration_slope": 1.133
+      },
+      "dose_basis": {
+        "metric": "physical MLD and V30; no EQD2 conversion"
+      },
+      "cohort": {
+        "technique": "thoracic IMRT",
+        "treatment_period": "2018-2023",
+        "multimodal_context": "approximately half of patients received PD-1/PD-L1 inhibitors"
+      },
+      "source": {
+        "citation": "Chen Z et al. External validation and updating of NTCP models for radiation pneumonitis: QUANTEC, Appelt, and a local simplified model. Front Oncol. 2026.",
+        "pmid": "42130623",
+        "doi": "10.3389/fonc.2026.1777999"
+      },
+      "status": "experimental_external_validation",
+      "implementation_notes": "The paper reports a final Model D with external validation but also contains a reporting inconsistency: text states tumor location was retained whereas the displayed final coefficient table/equation does not provide a tumor-location coefficient. BioRT therefore does not implement the equation until that discrepancy is resolved from supplementary material or author clarification.",
+      "implementation": {
+        "canonical_structure": "lung_total",
+        "input_mode": "evidence_only",
+        "runtime_enabled": false,
+        "runtime_reason": "Not implemented because the publication's displayed final model specification is internally inconsistent regarding tumor-location inclusion."
       }
     }
   ]
