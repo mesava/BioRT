@@ -13,7 +13,7 @@ public class RtPlanReaderTests
         var fractionGroup = new DicomDataset();
         fractionGroup.Add(
             DicomTag.NumberOfFractionsPlanned,
-            (ushort)30);
+            30);
 
         var doseReference = new DicomDataset();
         doseReference.Add(
@@ -51,7 +51,7 @@ public class RtPlanReaderTests
         var fractionGroup = new DicomDataset();
         fractionGroup.Add(
             DicomTag.NumberOfFractionsPlanned,
-            (ushort)25);
+            25);
 
         var organAtRisk = new DicomDataset();
         organAtRisk.Add(
