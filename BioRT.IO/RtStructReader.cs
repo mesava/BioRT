@@ -48,8 +48,36 @@ public class RtStructReader
 
             foreach (var contour in contourSeq.Items)
             {
-                var data =
+                // Current dose-volume rasterization supports filled polygons
+                // only. CLOSEDPLANAR_XOR requires exclusive-disjunction
+                // topology; OPEN_* and POINT cannot form voxel area masks.
+                string geometricType =
+                    contour.GetSingleValue<string>(
+                        DicomTag.ContourGeometricType);
+
+                if (!string.Equals(
+                        geometricType,
+                        "CLOSED_PLANAR",
+                        StringComparison.Ordinal))
+                {
+                    throw new NotSupportedException(
+                        $"RTSTRUCT ROI {roiNumber}: contour type " +
+                        $"'{geometricType}' is not supported for DVH. " +
+                        "BioRT cannot treat XOR, open or point contours " +
+                        "as ordinary filled polygons.");
+                }
+
+                double[] data =
                     contour.GetValues<double>(DicomTag.ContourData);
+
+                if (data.Length < 9 ||
+                    data.Length % 3 != 0 ||
+                    data.Any(value => !double.IsFinite(value)))
+                {
+                    throw new InvalidOperationException(
+                        $"RTSTRUCT ROI {roiNumber} has invalid " +
+                        "CLOSED_PLANAR contour coordinates.");
+                }
 
                 list.Add(data);
             }
