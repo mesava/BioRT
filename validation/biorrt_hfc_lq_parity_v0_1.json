@@ -1,0 +1,54 @@
+{
+  "schema_version": "biorrt-hfc-lq-parity/0.1",
+  "scientific_status": "synthetic_numerical_regression_only",
+  "reference": "LQ BED = D(1 + (D/N)/(alpha/beta)); EQDx = D((D/N)+(alpha/beta))/(reference_fraction_size+(alpha/beta))",
+  "dose_units": "Gy",
+  "tolerance_abs_gy": 1e-10,
+  "cases": [
+    {
+      "id": "conventional-30fx-2gy",
+      "fractions": 30,
+      "total_dose_gy": 60,
+      "alpha_beta_gy": 3,
+      "reference_fraction_gy": 2,
+      "expected_bed_gy": 100,
+      "expected_eqd_gy": 60
+    },
+    {
+      "id": "hypofractionated-5fx-5gy",
+      "fractions": 5,
+      "total_dose_gy": 25,
+      "alpha_beta_gy": 2,
+      "reference_fraction_gy": 2,
+      "expected_bed_gy": 87.5,
+      "expected_eqd_gy": 43.75
+    },
+    {
+      "id": "noninteger-bed-5fx-4gy",
+      "fractions": 5,
+      "total_dose_gy": 20,
+      "alpha_beta_gy": 3,
+      "reference_fraction_gy": 2,
+      "expected_bed_gy": 46.666666666666664,
+      "expected_eqd_gy": 28
+    },
+    {
+      "id": "high-dose-1fx-8gy",
+      "fractions": 1,
+      "total_dose_gy": 8,
+      "alpha_beta_gy": 2,
+      "reference_fraction_gy": 2,
+      "expected_bed_gy": 40,
+      "expected_eqd_gy": 20
+    },
+    {
+      "id": "target-5fx-6gy",
+      "fractions": 5,
+      "total_dose_gy": 30,
+      "alpha_beta_gy": 3,
+      "reference_fraction_gy": 2,
+      "expected_bed_gy": 90,
+      "expected_eqd_gy": 54
+    }
+  ]
+}

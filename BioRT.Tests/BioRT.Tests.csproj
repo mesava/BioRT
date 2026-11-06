@@ -34,6 +34,9 @@
     <Content Include="..\validation\tg166_reference_values.json" Link="data\tg166_reference_values.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\validation\biorrt_hfc_lq_parity_v0_1.json" Link="data\biorrt_hfc_lq_parity_v0_1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\examples\clinical_context.example.json" Link="data\clinical_context.example.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
