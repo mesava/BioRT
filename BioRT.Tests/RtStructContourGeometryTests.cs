@@ -68,7 +68,7 @@ public sealed class RtStructContourGeometryTests
         InvalidOperationException ex =
             Assert.Throws<InvalidOperationException>(
                 () => new RtStructReader().ReadContours(
-                    new DicomFile(ds)));
+                    CreateDicomFile(ds)));
 
         Assert.Contains("invalid", ex.Message);
     }
@@ -99,6 +99,14 @@ public sealed class RtStructContourGeometryTests
                 () => new RtStructReader().ReadContours(file));
 
         Assert.Contains("non-axial", ex.Message);
+    }
+
+    private static DicomFile CreateDicomFile(DicomDataset ds)
+    {
+        ds.Add(DicomTag.Modality, "RTSTRUCT");
+        ds.Add(DicomTag.SOPClassUID, DicomUID.RTStructureSetStorage);
+        ds.Add(DicomTag.SOPInstanceUID, DicomUID.Generate());
+        return new DicomFile(ds);
     }
 
     private static DicomFile CreateRtStruct(
@@ -132,6 +140,6 @@ public sealed class RtStructContourGeometryTests
                 DicomTag.ROIContourSequence,
                 roiContour));
 
-        return new DicomFile(ds);
+        return CreateDicomFile(ds);
     }
 }
