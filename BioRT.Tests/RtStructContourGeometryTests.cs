@@ -73,19 +73,49 @@ public sealed class RtStructContourGeometryTests
         Assert.Contains("invalid", ex.Message);
     }
 
+    [Fact]
+    public void ClosedPlanarContour_RejectsIncorrectPointCount()
+    {
+        DicomFile file = CreateRtStruct(
+            "CLOSED_PLANAR",
+            declaredPoints: 5);
+
+        InvalidOperationException ex =
+            Assert.Throws<InvalidOperationException>(
+                () => new RtStructReader().ReadContours(file));
+
+        Assert.Contains("NumberOfContourPoints", ex.Message);
+    }
+
+    [Fact]
+    public void ClosedPlanarContour_RejectsNonAxialPlane()
+    {
+        DicomFile file = CreateRtStruct(
+            "CLOSED_PLANAR",
+            nonAxial: true);
+
+        NotSupportedException ex =
+            Assert.Throws<NotSupportedException>(
+                () => new RtStructReader().ReadContours(file));
+
+        Assert.Contains("non-axial", ex.Message);
+    }
+
     private static DicomFile CreateRtStruct(
-        string geometricType)
+        string geometricType,
+        int declaredPoints = 4,
+        bool nonAxial = false)
     {
         var contour = new DicomDataset();
         contour.Add(DicomTag.ContourGeometricType, geometricType);
-        contour.Add(DicomTag.NumberOfContourPoints, 4);
+        contour.Add(DicomTag.NumberOfContourPoints, declaredPoints);
         contour.Add(
             DicomTag.ContourData,
             new double[]
             {
                 0, 0, 0,
                 2, 0, 0,
-                2, 2, 0,
+                2, 2, nonAxial ? 0.25 : 0.0,
                 0, 2, 0
             });
 
