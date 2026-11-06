@@ -1,6 +1,6 @@
 # Realistic commissioning case 001
 
-Status: **realistic browser commissioning passed on the deployed site; authoritative Web SHA-256 captured.**
+Status: **historical realistic Web baseline captured before the geometry fixes; post-fix re-commissioning is pending.**
 
 The source archive is a hypothetical/synthetic-patient RT export supplied for commissioning. It is intentionally **not committed** to the public repository.
 
@@ -77,7 +77,7 @@ For this case that omitted:
 
 PR #28 evaluates every explicit clinical goal while still using D50% >= Rx for PTV prescription identification.
 
-## Physical results after corrected structure matching
+## Historical physical results after structure matching, before geometry corrections
 
 PTV:
 - sampled dose-grid volume: approximately 274.44 cm3;
@@ -123,7 +123,7 @@ This remains a historical reference-model result, not a modern absolute-risk cla
 
 ## Geometry observations
 
-The dose grid is standard axial, so the present MaskBuilder coordinate assumptions are satisfied for this case.
+The dose grid is standard axial. However, the previously computed mask used a half-voxel XY offset: DICOM ImagePositionPatient already denotes the centre of voxel [0,0,0]. PR #38 removed that offset. All historical DVH, volume, NTCP and SHA-256 outputs below predate this correction and must NOT be treated as current BioRT expected results.
 
 RTSTRUCT contours are generally spaced at about 1.25 mm while RTDOSE is sampled at 1.3 mm. The current implementation assigns each contour plane to its nearest dose plane.
 
@@ -136,7 +136,7 @@ This does not invalidate the present dose-grid DVH commissioning case, but it id
 - validate/interpolate RTSTRUCT-to-RTDOSE rasterization for small structures;
 - distinguish contour-derived geometric volume from sampled dose-grid mask volume where absolute-volume metrics Dcc/Vcc are used.
 
-## Browser commissioning result
+## Historical browser commissioning result (pre-voxel-centre correction)
 
 The original local ZIP was loaded successfully in the deployed BioRT.Web build after the ZIP async-read fix and workflow-trigger fix.
 
@@ -172,7 +172,7 @@ BioRT.Web and BioRT.App do not use separate scientific implementations:
 
 The automated synthetic commissioning test already exercises the folder-style and stream-style input paths on identical serialized DICOM bytes and requires exact fingerprint equality plus `PlanAnalysisComparator` agreement.
 
-For this realistic case, the authoritative Web fingerprint above is therefore accepted as the first realistic browser commissioning baseline. A literal same-case physical-folder console run remains a useful independent confirmation rather than a blocker for continued development.
+For this realistic case, the Web fingerprint above is retained as the first **historical pre-geometry-correction baseline**, not the correct expected fingerprint for current main. A new live Web run and exact same-version physical-folder Console comparison are required before accepting the post-correction commissioning case.
 
 BioRT.App now prints the full 64-character SHA-256 as well as the 16-character short form, so any future same-case Console run can be compared directly against the Web baseline.
 
@@ -194,7 +194,18 @@ Passed:
 - live realistic-browser run;
 - authoritative full Web SHA-256 captured.
 
-Next commissioning priority:
-- geometry/rasterization validation for small structures and absolute-volume metrics, tracked in issue #29.
+After PR #38/#39, acceptance must be reconsidered:
+- PR #38 fixes in-plane voxel-centre alignment for axis-aligned RTDOSE; this may change which voxels intersect an ROI.
+- PR #39 rejects unsupported `ContourGeometricType` entries instead of silently treating XOR/open/point contours as filled polygons; it also validates point counts and axial contour planes.
+- Original RTSTRUCT contains 545 `CLOSED_PLANAR` contours and none of the newly rejected types.
+- New expected structure volumes, DVHs, PTV/OAR metrics, clinical criteria, model outputs and full SHA-256 have **not yet** been captured on the corrected release.
+- The 21/21 PASS and the historical numerical values above are not automatically carried over to the corrected mask algorithm.
+- The strict realistic Web↔Console same-case match remains pending.
+
+Next geometry work remains tracked in issue #29:
+- actual XOR/keyhole topology support;
+- RTSTRUCT-to-dose-grid Z sampling and plane interpolation QA;
+- small-structure contour-derived volume and reliable Dcc/Vcc;
+- new same-version Web/Console commissioning after the corrected geometry is published.
 
 The source DICOM archive remains outside the public repository.
