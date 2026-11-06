@@ -64,9 +64,12 @@ public class MaskBuilder
             for (int i = 0; i < nx; i++)
                 for (int j = 0; j < ny; j++)
                 {
-                    // Центр вокселя в patient coordinates
-                    double x = x0 + (i + 0.5) * dx;
-                    double y = y0 + (j + 0.5) * dy;
+                    // DICOM IPP denotes the centre of dose voxel [0,0,0].
+                    // RtDoseReader currently accepts only unrotated axial grids.
+                    // PixelSpacing is already mapped to SpacingX (columns)
+                    // and SpacingY (rows) by RtDoseReader.
+                    double x = x0 + i * dx;
+                    double y = y0 + j * dy;
 
                     foreach (var contour in sliceContours)
                     {
