@@ -79,6 +79,32 @@ public class RtStructReader
                         "CLOSED_PLANAR contour coordinates.");
                 }
 
+                int expectedPoints =
+                    contour.GetSingleValue<int>(
+                        DicomTag.NumberOfContourPoints);
+
+                if (data.Length / 3 != expectedPoints)
+                {
+                    throw new InvalidOperationException(
+                        $"RTSTRUCT ROI {roiNumber}: NumberOfContourPoints " +
+                        "does not match ContourData length.");
+                }
+
+                double planeZ = data[2];
+
+                for (int point = 1; point < expectedPoints; point++)
+                {
+                    // The existing MaskBuilder uses one patient-Z plane.
+                    // A 3D oblique closed polygon must not be projected
+                    // onto a single axial plane without a validated transform.
+                    if (Math.Abs(data[3 * point + 2] - planeZ) > 1e-3)
+                    {
+                        throw new NotSupportedException(
+                            $"RTSTRUCT ROI {roiNumber}: an oblique or " +
+                            "non-axial contour plane is not yet supported.");
+                    }
+                }
+
                 list.Add(data);
             }
 
