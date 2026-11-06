@@ -18,7 +18,7 @@
 - Полный детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
 - Tolerance-based `PlanAnalysisComparator` для cross-version regression.
 - Автоматический synthetic DICOM commissioning folder-path ↔ stream-path.
-- Первый realistic browser commissioning case успешно пройден на опубликованном сайте.
+- Первый realistic browser commissioning case загружен и зафиксирован как исторический baseline; после исправления геометрии требуется новый расчёт.
 - TG-166 математические/аналитические regression tests.
 - GitHub Actions для scientific CI, Web CI и GitHub Pages.
 
@@ -56,7 +56,7 @@ Web UI выводит физические метрики плана, PASS/FAIL 
 
 DICOM не должен уходить на внешний сервер только ради расчёта: архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
 
-Автоматический synthetic Web↔Console input-path commissioning проходит в CI. Первый realistic synthetic-patient browser case также успешно прошёл полный DICOM→analysis pipeline на GitHub Pages; его baseline SHA-256 зафиксирован в `docs/commissioning-realistic-case-001.md`.
+Автоматический synthetic Web↔Console input-path commissioning проходит в CI. Первый realistic synthetic-patient browser case прошёл DICOM→analysis pipeline, но его baseline SHA-256 относится к версии **до исправления координат центров вокселей**. После PR #38/#39 необходима повторная проверка того же архива; подробности в `docs/commissioning-realistic-case-001.md`.
 
 Подробнее:
 - `docs/web-architecture.md`
@@ -114,7 +114,7 @@ web fingerprint == console fingerprint
 
 Fingerprint включает геометрию RTDOSE, рассчитанные DVH, объёмы структур, PTV-метрики, clinical criteria, NTCP/TCP и warnings; Patient ID намеренно исключён.
 
-Для realistic commissioning case 001 опубликованный Web baseline:
+Для realistic commissioning case 001 исторический Web baseline **до исправления геометрии** (не использовать как текущий ожидаемый хэш):
 
 ```text
 51dde8070330bd1f518651e6527fe7ef187abb942f2b5090177ee9aad68a47ae
