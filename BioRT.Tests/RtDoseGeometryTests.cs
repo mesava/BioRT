@@ -21,7 +21,7 @@ public sealed class RtDoseGeometryTests
         Assert.Equal(3.0, dose.SpacingX, precision: 12);
         Assert.Equal(2.0, dose.SpacingY, precision: 12);
         Assert.Equal(2.0, dose.SpacingZ, precision: 12);
-        Assert.Equal([40.0, 42.0], dose.ZPositions);
+        Assert.Equal(new double[] { 40.0, 42.0 }, dose.ZPositions);
         Assert.Equal(20.0, dose.Dose[0, 0, 0], precision: 12);
         Assert.Equal(20.0, dose.Dose[0, 0, 1], precision: 12);
     }
@@ -35,7 +35,7 @@ public sealed class RtDoseGeometryTests
 
         var dose = new RtDoseReader().Read(file);
 
-        Assert.Equal([40.0, 42.0], dose.ZPositions);
+        Assert.Equal(new double[] { 40.0, 42.0 }, dose.ZPositions);
     }
 
     [Fact]
