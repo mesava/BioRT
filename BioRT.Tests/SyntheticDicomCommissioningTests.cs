@@ -243,6 +243,7 @@ public class SyntheticDicomCommissioningTests
         dataset.Add(DicomTag.Columns, (ushort)2);
         dataset.Add(DicomTag.PixelSpacing, 1.0, 1.0);
         dataset.Add(DicomTag.ImagePositionPatient, 0.0, 0.0, 0.0);
+        dataset.Add(DicomTag.ImageOrientationPatient, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         dataset.Add(DicomTag.GridFrameOffsetVector, 0.0, 1.0);
 
         dataset.Add(DicomTag.SamplesPerPixel, (ushort)1);
