@@ -346,8 +346,16 @@ internal class Program
         }
 
         Console.WriteLine();
+        string analysisFingerprint =
+            PlanAnalysisFingerprint.Compute(
+                plan,
+                analysis);
+
         Console.WriteLine(
-            $"Analysis fingerprint: {PlanAnalysisFingerprint.ComputeShort(plan, analysis)}");
+            $"Analysis fingerprint SHA-256: {analysisFingerprint}");
+
+        Console.WriteLine(
+            $"Analysis fingerprint short: {analysisFingerprint[..16]}");
 
         Console.WriteLine();
         Console.WriteLine("Finished successfully.");

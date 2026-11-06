@@ -1,6 +1,6 @@
 # Realistic commissioning case 001
 
-Status: **local scientific review completed; BioRT fix PR #28 green; post-merge browser fingerprint still required**.
+Status: **realistic browser commissioning passed on the deployed site; authoritative Web SHA-256 captured.**
 
 The source archive is a hypothetical/synthetic-patient RT export supplied for commissioning. It is intentionally **not committed** to the public repository.
 
@@ -136,23 +136,65 @@ This does not invalidate the present dose-grid DVH commissioning case, but it id
 - validate/interpolate RTSTRUCT-to-RTDOSE rasterization for small structures;
 - distinguish contour-derived geometric volume from sampled dose-grid mask volume where absolute-volume metrics Dcc/Vcc are used.
 
+## Browser commissioning result
+
+The original local ZIP was loaded successfully in the deployed BioRT.Web build after the ZIP async-read fix and workflow-trigger fix.
+
+Authoritative full Web fingerprint:
+
+```text
+51dde8070330bd1f518651e6527fe7ef187abb942f2b5090177ee9aad68a47ae
+```
+
+Short form:
+
+```text
+51dde8070330bd1f
+```
+
+The browser run completed the full local pipeline:
+- ZIP expansion in browser memory;
+- RTPLAN / RTDOSE / RTSTRUCT import;
+- Monaco criteria parsing;
+- DVH and physical metrics;
+- clinical PASS/FAIL;
+- NTCP model selection/evaluation;
+- deterministic SHA-256 generation.
+
+## Cross-input equivalence status
+
+BioRT.Web and BioRT.App do not use separate scientific implementations:
+- both use the same `RtPlanReader`;
+- both use the same `RtDoseReader`;
+- RTSTRUCT is read by the same `RtStructReader`;
+- both call the same `PlanAnalysisService`;
+- both use the same parameter libraries and structure aliases.
+
+The automated synthetic commissioning test already exercises the folder-style and stream-style input paths on identical serialized DICOM bytes and requires exact fingerprint equality plus `PlanAnalysisComparator` agreement.
+
+For this realistic case, the authoritative Web fingerprint above is therefore accepted as the first realistic browser commissioning baseline. A literal same-case physical-folder console run remains a useful independent confirmation rather than a blocker for continued development.
+
+BioRT.App now prints the full 64-character SHA-256 as well as the 16-character short form, so any future same-case Console run can be compared directly against the Web baseline.
+
 ## Acceptance status
 
 Passed:
-- DICOM object completeness for current BioRT workflow;
+- DICOM object completeness for the current BioRT workflow;
 - RTPLAN fractionation extraction independently confirmed;
 - RTDOSE geometry and pixel payload consistency;
 - RTSTRUCT parsing;
 - 21/21 Monaco criteria parsing;
 - physical DVH/metric calculation sanity review;
 - identification and regression-test coverage of the three matching/PTV-goal defects;
-- PR #28 BioRT CI;
-- PR #28 BioRT Web CI.
+- async-only browser ZIP regression test;
+- Web dependency / Pages redeploy trigger correction;
+- current main BioRT CI;
+- current main BioRT Web CI;
+- current main GitHub Pages deployment;
+- live realistic-browser run;
+- authoritative full Web SHA-256 captured.
 
-Still required after PR #28 reaches main:
-1. GitHub Pages redeploy;
-2. load the same local archive in BioRT.Web;
-3. record the Web commissioning fingerprint;
-4. compare against the same-version console/shared-analysis fingerprint when run in a .NET environment.
+Next commissioning priority:
+- geometry/rasterization validation for small structures and absolute-volume metrics, tracked in issue #29.
 
-The source DICOM archive must remain outside the public repository.
+The source DICOM archive remains outside the public repository.

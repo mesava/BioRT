@@ -15,9 +15,10 @@
 - LQ / BED / EQD2 и model-specific fractionation handling.
 - `clinical_context.json` для переменных, которых нет в DICOM.
 - Общий `PlanAnalysisService` для Web и console regression harness.
-- Детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
+- Полный детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
 - Tolerance-based `PlanAnalysisComparator` для cross-version regression.
 - Автоматический synthetic DICOM commissioning folder-path ↔ stream-path.
+- Первый realistic browser commissioning case успешно пройден на опубликованном сайте.
 - TG-166 математические/аналитические regression tests.
 - GitHub Actions для scientific CI, Web CI и GitHub Pages.
 
@@ -32,6 +33,7 @@ https://mesava.github.io/BioRT/
 GitHub Pages deployment включён и успешно развёртывает `BioRT.Web`.
 
 `BioRT.Web` локально в памяти браузера принимает:
+- один ZIP с согласованным RT-набором; либо
 - RTPLAN;
 - RTDOSE;
 - RTSTRUCT;
@@ -50,15 +52,16 @@ DICOM
   -> warnings / provenance
 ```
 
-Web UI выводит физические метрики плана, PASS/FAIL клинических критериев, NTCP/TCP с идентификатором модели и provenance, а также commissioning fingerprint.
+Web UI выводит физические метрики плана, PASS/FAIL клинических критериев, NTCP/TCP с идентификатором модели и provenance, а также полный 64-символьный commissioning SHA-256.
 
 DICOM не должен уходить на внешний сервер только ради расчёта: архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
 
-Автоматический синтетический Web↔Console input-path commissioning уже проходит в CI. До завершения отдельного commissioning на реалистичном деидентифицированном клиническом наборе используйте только синтетические или деидентифицированные данные.
+Автоматический synthetic Web↔Console input-path commissioning проходит в CI. Первый realistic synthetic-patient browser case также успешно прошёл полный DICOM→analysis pipeline на GitHub Pages; его baseline SHA-256 зафиксирован в `docs/commissioning-realistic-case-001.md`.
 
 Подробнее:
 - `docs/web-architecture.md`
 - `docs/web-console-commissioning.md`
+- `docs/commissioning-realistic-case-001.md`
 - `docs/tolerance-comparison.md`
 
 ## Проекты
@@ -103,13 +106,19 @@ BioRT не использует идею «один орган → один ко
 - `PlanAnalysisComparator` equality;
 - ожидаемые физические метрики.
 
-Для первого реалистичного деидентифицированного клинического набора строгий критерий остаётся:
+Для реалистичного деидентифицированного/синтетического клинического набора строгий критерий остаётся:
 
 ```text
 web fingerprint == console fingerprint
 ```
 
 Fingerprint включает геометрию RTDOSE, рассчитанные DVH, объёмы структур, PTV-метрики, clinical criteria, NTCP/TCP и warnings; Patient ID намеренно исключён.
+
+Для realistic commissioning case 001 опубликованный Web baseline:
+
+```text
+51dde8070330bd1f518651e6527fe7ef187abb942f2b5090177ee9aad68a47ae
+```
 
 Подробная процедура: `docs/web-console-commissioning.md`.
 
