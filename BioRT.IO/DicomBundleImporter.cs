@@ -107,6 +107,12 @@ public sealed class DicomBundleImporter
         EnsureExactlyOne(rtDoses, "RTDOSE");
         EnsureExactlyOne(rtStructs, "RTSTRUCT");
 
+        // A numeric XYZ match is meaningless across distinct DICOM
+        // Frames of Reference without an explicit registration.
+        DicomFrameOfReferenceGuard.Validate(
+            rtDoses[0].File,
+            rtStructs[0].File);
+
         var plan = new PlanData();
 
         _planReader.Read(
