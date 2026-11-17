@@ -10,6 +10,9 @@ namespace BioRT.Tests;
 
 public class SyntheticDicomCommissioningTests
 {
+    private const string SyntheticFrameUid =
+        "1.2.826.0.1.3680043.10.543.77";
+
     [Fact]
     public async Task FolderAndStreamImportPaths_ProduceSameAnalysisFingerprint()
     {
@@ -261,6 +264,7 @@ public class SyntheticDicomCommissioningTests
         dataset.Add(DicomTag.Modality, "RTDOSE");
         dataset.Add(DicomTag.SOPClassUID, DicomUID.RTDoseStorage);
         dataset.Add(DicomTag.SOPInstanceUID, DicomUID.Generate());
+        dataset.Add(DicomTag.FrameOfReferenceUID, SyntheticFrameUid);
 
         dataset.Add(DicomTag.DoseUnits, "GY");
         dataset.Add(DicomTag.DoseType, "PHYSICAL");
@@ -317,14 +321,23 @@ public class SyntheticDicomCommissioningTests
 
         var ptvRoi = new DicomDataset();
         ptvRoi.Add(DicomTag.ROINumber, 1);
+        ptvRoi.Add(
+            DicomTag.ReferencedFrameOfReferenceUID,
+            SyntheticFrameUid);
         ptvRoi.Add(DicomTag.ROIName, "PTV_60");
 
         var oarRoi = new DicomDataset();
         oarRoi.Add(DicomTag.ROINumber, 2);
+        oarRoi.Add(
+            DicomTag.ReferencedFrameOfReferenceUID,
+            SyntheticFrameUid);
         oarRoi.Add(DicomTag.ROIName, "OAR");
 
         var ringRoi = new DicomDataset();
         ringRoi.Add(DicomTag.ROINumber, 3);
+        ringRoi.Add(
+            DicomTag.ReferencedFrameOfReferenceUID,
+            SyntheticFrameUid);
         ringRoi.Add(DicomTag.ROIName, "RING");
 
         var ptvContour = new DicomDataset();
@@ -385,6 +398,14 @@ public class SyntheticDicomCommissioningTests
         dataset.Add(DicomTag.Modality, "RTSTRUCT");
         dataset.Add(DicomTag.SOPClassUID, DicomUID.RTStructureSetStorage);
         dataset.Add(DicomTag.SOPInstanceUID, DicomUID.Generate());
+        dataset.Add(DicomTag.FrameOfReferenceUID, SyntheticFrameUid);
+
+        var referencedFor = new DicomDataset();
+        referencedFor.Add(DicomTag.FrameOfReferenceUID, SyntheticFrameUid);
+        dataset.Add(
+            new DicomSequence(
+                DicomTag.ReferencedFrameOfReferenceSequence,
+                referencedFor));
 
         dataset.Add(
             new DicomSequence(
