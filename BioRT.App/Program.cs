@@ -137,7 +137,10 @@ internal class Program
         var structReader = new RtStructReader();
 
         var roiNames = structReader.ReadStructureNames(structDicom);
-        var contours = structReader.ReadContours(structDicom);
+        var roiContours = structReader.ReadRoiContours(structDicom);
+        var contours = roiContours.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Polygons);
 
         // ================= SCIENTIFIC RESOURCES =================
 
@@ -191,6 +194,7 @@ internal class Program
                         Plan = plan,
                         StructureNames = roiNames,
                         Contours = contours,
+                        RoiContours = roiContours,
                         Criteria = criteria,
                         ClinicalContext = clinicalContext,
                         StructureMatcher = matcher,
