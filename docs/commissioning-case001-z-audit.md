@@ -91,6 +91,44 @@ Complex multicomponent ROIs require validated polygon operations; zero
 invalid individual polygons does not validate their complete 3D
 combination or the inter-plane shape.
 
+## Independent dose-grid mask sanity check
+
+A second exploratory check used **Shapely 2.1.2 point-in-polygon**
+evaluation at the centres of the RTDOSE voxels (axial XY origin,
+1.3×1.3 mm spacing), with the same nearest-Z-frame selection and union
+of contours as the current BioRT axial mask. The voxel volume was
+1.3³ mm³ = 0.002197 cm³.
+
+This is a separate implementation/independent check, **not** an
+analytical truth reference. Boundary-inclusion rules may differ slightly
+from BioRT's ray-casting rasterizer.
+
+| ROI | Approx. independent sampled RTDOSE-grid volume, cm³ | Inter-plane area integral, cm³ |
+|---|---:|---:|
+| PTV | 274.636 | 271.955 |
+| Brainstem | 25.674 | 25.208 |
+| Cochlea_L | 0.0417 | 0.0376 |
+| Cochlea_R | 0.0549 | 0.0439 |
+| Eye_L | 7.953 | 7.546 |
+| Eye_R | 7.630 | 7.344 |
+| Lens_L | 0.2241 | 0.1795 |
+| Lens_R | 0.2307 | 0.1953 |
+| OpticChiasm | 0.1582 | 0.0773 |
+| SpinalCord | 3.891 | 3.653 |
+
+The independent sampled PTV value is close to the user-confirmed
+BioRT value of 274.66 cm³ (difference about 0.024 cm³), suggesting
+good **implementation agreement** for this ROI under the current
+discrete nearest-frame convention.
+
+The large relative differences for some tiny OARs, especially a
+two-plane OpticChiasm ROI, **cannot be interpreted as real volume
+errors**. They reflect incomparable definitions (one voxel slab per
+selected RTDOSE frame versus between-plane contour-area integration
+without endpoint extension) and potentially large small-volume
+quantization. An independent geometric ground truth, explicit contour
+endpoint convention and clinical TPS comparison are still required.
+
 ## Commissioning identity
 
 Historical, pre-XY-geometry Web SHA-256:
