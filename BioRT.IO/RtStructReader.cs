@@ -1,71 +1,126 @@
-﻿using FellowOakDicom;
 using BioRT.Core.Models;
+using FellowOakDicom;
 
 namespace BioRT.IO.Dicom;
 
-public class RtStructReader
+public sealed class RtStructReader
 {
+    private const double AxialToleranceMm = 1e-3;
+
     public Dictionary<int, string> ReadStructureNames(DicomFile file)
     {
+        ArgumentNullException.ThrowIfNull(file);
         var map = new Dictionary<int, string>();
 
-        var ds = file.Dataset;
+        DicomSequence roiSeq =
+            file.Dataset.GetSequence(DicomTag.StructureSetROISequence);
 
-        var roiSeq = ds.GetSequence(DicomTag.StructureSetROISequence);
-
-        foreach (var roi in roiSeq.Items)
+        foreach (DicomDataset roi in roiSeq.Items)
         {
-            int roiNumber =
+            int number =
                 roi.GetSingleValue<int>(DicomTag.ROINumber);
-
             string name =
                 roi.GetSingleValue<string>(DicomTag.ROIName);
 
-            map[roiNumber] = name;
+            map.Add(number, name);
         }
 
         return map;
     }
 
+    /// <summary>
+    /// Legacy flat-contour interface. It deliberately REJECTS XOR,
+    /// which cannot safely be represented without composition metadata.
+    /// New analysis paths must use ReadRoiContours.
+    /// </summary>
     public Dictionary<int, List<double[]>> ReadContours(DicomFile file)
     {
-        var contours = new Dictionary<int, List<double[]>>();
+        Dictionary<int, RoiContours> rois =
+            ParseRoiContours(file, allowXor: false);
 
-        var ds = file.Dataset;
+        return rois.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Polygons);
+    }
 
-        var roiContourSeq =
-            ds.GetSequence(DicomTag.ROIContourSequence);
+    /// <summary>
+    /// Typed interface preserving CLOSED_PLANAR union and
+    /// CLOSEDPLANAR_XOR exclusive-disjunction semantics end-to-end.
+    /// </summary>
+    public Dictionary<int, RoiContours> ReadRoiContours(DicomFile file)
+        => ParseRoiContours(file, allowXor: true);
 
-        foreach (var roiContour in roiContourSeq.Items)
+    private static Dictionary<int, RoiContours> ParseRoiContours(
+        DicomFile file,
+        bool allowXor)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        var result = new Dictionary<int, RoiContours>();
+
+        DicomSequence roiContourSeq =
+            file.Dataset.GetSequence(DicomTag.ROIContourSequence);
+
+        foreach (DicomDataset roi in roiContourSeq.Items)
         {
-            int roiNumber =
-                roiContour.GetSingleValue<int>(DicomTag.ReferencedROINumber);
+            int number =
+                roi.GetSingleValue<int>(
+                    DicomTag.ReferencedROINumber);
 
-            var contourSeq =
-                roiContour.GetSequence(DicomTag.ContourSequence);
+            DicomSequence contourSeq =
+                roi.GetSequence(DicomTag.ContourSequence);
 
-            var list = new List<double[]>();
+            var polygons = new List<double[]>();
+            RoiContourFillRule? rule = null;
 
-            foreach (var contour in contourSeq.Items)
+            foreach (DicomDataset contour in contourSeq.Items)
             {
-                // Current dose-volume rasterization supports filled polygons
-                // only. CLOSEDPLANAR_XOR requires exclusive-disjunction
-                // topology; OPEN_* and POINT cannot form voxel area masks.
                 string geometricType =
                     contour.GetSingleValue<string>(
                         DicomTag.ContourGeometricType);
 
-                if (!string.Equals(
+                RoiContourFillRule currentRule;
+
+                if (string.Equals(
                         geometricType,
                         "CLOSED_PLANAR",
                         StringComparison.Ordinal))
                 {
-                    throw new NotSupportedException(
-                        $"RTSTRUCT ROI {roiNumber}: contour type " +
-                        $"'{geometricType}' is not supported for DVH. " +
-                        "BioRT cannot treat XOR, open or point contours " +
-                        "as ordinary filled polygons.");
+                    currentRule = RoiContourFillRule.Union;
                 }
+                else if (string.Equals(
+                             geometricType,
+                             "CLOSEDPLANAR_XOR",
+                             StringComparison.Ordinal))
+                {
+                    if (!allowXor)
+                    {
+                        throw new NotSupportedException(
+                            $"RTSTRUCT ROI {number}: contour type " +
+                            "'CLOSEDPLANAR_XOR' requires topology-aware " +
+                            "ReadRoiContours; flat ReadContours is unsafe.");
+                    }
+
+                    currentRule = RoiContourFillRule.Xor;
+                }
+                else
+                {
+                    throw new NotSupportedException(
+                        $"RTSTRUCT ROI {number}: contour type " +
+                        $"'{geometricType}' is not supported for DVH. " +
+                        "Open and point contours are not volume regions.");
+                }
+
+                if (rule is not null && rule != currentRule)
+                {
+                    throw new InvalidOperationException(
+                        $"RTSTRUCT ROI {number} mixes CLOSED_PLANAR " +
+                        "and CLOSEDPLANAR_XOR contour types; DICOM " +
+                        "requires the same geometric type for the " +
+                        "entire ROI when XOR is used.");
+                }
+
+                rule = currentRule;
 
                 double[] data =
                     contour.GetValues<double>(DicomTag.ContourData);
@@ -75,8 +130,8 @@ public class RtStructReader
                     data.Any(value => !double.IsFinite(value)))
                 {
                     throw new InvalidOperationException(
-                        $"RTSTRUCT ROI {roiNumber} has invalid " +
-                        "CLOSED_PLANAR contour coordinates.");
+                        $"RTSTRUCT ROI {number} has invalid " +
+                        "closed-planar contour coordinates.");
                 }
 
                 int expectedPoints =
@@ -86,31 +141,43 @@ public class RtStructReader
                 if (data.Length / 3 != expectedPoints)
                 {
                     throw new InvalidOperationException(
-                        $"RTSTRUCT ROI {roiNumber}: NumberOfContourPoints " +
+                        $"RTSTRUCT ROI {number}: NumberOfContourPoints " +
                         "does not match ContourData length.");
                 }
 
                 double planeZ = data[2];
-
                 for (int point = 1; point < expectedPoints; point++)
                 {
-                    // The existing MaskBuilder uses one patient-Z plane.
-                    // A 3D oblique closed polygon must not be projected
-                    // onto a single axial plane without a validated transform.
-                    if (Math.Abs(data[3 * point + 2] - planeZ) > 1e-3)
+                    if (Math.Abs(
+                            data[3 * point + 2] - planeZ) >
+                        AxialToleranceMm)
                     {
                         throw new NotSupportedException(
-                            $"RTSTRUCT ROI {roiNumber}: an oblique or " +
+                            $"RTSTRUCT ROI {number}: an oblique or " +
                             "non-axial contour plane is not yet supported.");
                     }
                 }
 
-                list.Add(data);
+                polygons.Add(data);
             }
 
-            contours[roiNumber] = list;
+            if (rule == RoiContourFillRule.Xor &&
+                polygons.Count < 2)
+            {
+                throw new InvalidOperationException(
+                    $"RTSTRUCT ROI {number}: CLOSEDPLANAR_XOR " +
+                    "requires more than one contour.");
+            }
+
+            result.Add(
+                number,
+                new RoiContours
+                {
+                    Polygons = polygons,
+                    FillRule = rule ?? RoiContourFillRule.Union
+                });
         }
 
-        return contours;
+        return result;
     }
 }
