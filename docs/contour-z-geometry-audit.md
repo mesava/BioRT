@@ -96,3 +96,28 @@ currently rely on a cumulative DVH sampled over the same grid.
 5. Same-case, same-commit Console↔Web full SHA-256 equality.
 
 Original hypothetical-patient DICOM remains local; do not commit it.
+
+
+## Frame of Reference safety prerequisite (follow-up)
+
+DICOM PS3.3 C.8.8.5 defines a `ReferencedFrameOfReferenceUID` on each
+RTSTRUCT ROI. The same numeric patient XYZ values in datasets with
+different FrameOfReferenceUIDs **do not establish spatial alignment**.
+
+`DicomFrameOfReferenceGuard` therefore validates before Web/Console
+plan analysis that:
+- RTDOSE declares `FrameOfReferenceUID`;
+- an RTSTRUCT top-level FrameOfReferenceUID, when present, agrees;
+- every StructureSetROISequence item declares the **same referenced**
+  FrameOfReferenceUID as RTDOSE;
+- every listed RTSTRUCT ReferencedFrameOfReferenceSequence item, if
+  present, also agrees with RTDOSE.
+
+Missing mandatory/mismatched identifiers fail safely. BioRT does **not**
+implement rigid/deformable DICOM registration or allow multi-frame-of-
+reference contour data to be combined by numeric XYZ matching alone.
+
+The original fully hypothetical case 001 has matching RTDOSE, RTSTRUCT
+and per-ROI FrameOfReferenceUID references. No raw UIDs are published
+here. The previous fingerprint payload is not changed by this identity
+validation when the UID check passes.
