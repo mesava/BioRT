@@ -24,6 +24,8 @@ public sealed class DicomImporter
             throw new DirectoryNotFoundException(folder);
 
         var plan = new PlanData();
+        DicomFile? rtDoseFile = null;
+        DicomFile? rtStructFile = null;
 
         string[] files = Directory.GetFiles(
             folder,
@@ -61,11 +63,15 @@ public sealed class DicomImporter
 
                     plan.Dose =
                         _doseReader.Read(dicom);
+
+                    rtDoseFile = dicom;
                 }
                 else if (sop == DicomUID.RTStructureSetStorage.UID)
                 {
                     Console.WriteLine(
                         $"RTSTRUCT : {Path.GetFileName(path)}");
+
+                    rtStructFile = dicom;
                 }
             }
             catch
@@ -73,6 +79,15 @@ public sealed class DicomImporter
                 // Not DICOM (criteria JSON, logs, etc.) -> skip.
                 continue;
             }
+        }
+
+        if (rtDoseFile != null && rtStructFile != null)
+        {
+            // Do this OUTSIDE the permissive file-discovery catch above:
+            // geometry safety errors must not be skipped as non-DICOM.
+            DicomFrameOfReferenceGuard.Validate(
+                rtDoseFile,
+                rtStructFile);
         }
 
         return plan;
