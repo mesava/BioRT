@@ -1,4 +1,5 @@
 using BioRT.IO.Dicom;
+using BioRT.Core.Models;
 using FellowOakDicom;
 using Xunit;
 
@@ -99,6 +100,102 @@ public sealed class RtStructContourGeometryTests
                 () => new RtStructReader().ReadContours(file));
 
         Assert.Contains("non-axial", ex.Message);
+    }
+
+    [Fact]
+    public void TypedReader_PreservesXorRuleWithTwoPolygons()
+    {
+        DicomFile file = CreateMultiContourRoi(
+            "CLOSEDPLANAR_XOR",
+            "CLOSEDPLANAR_XOR");
+
+        Dictionary<int, RoiContours> rois =
+            new RtStructReader().ReadRoiContours(file);
+
+        RoiContours roi = Assert.Single(rois).Value;
+        Assert.Equal(RoiContourFillRule.Xor, roi.FillRule);
+        Assert.Equal(2, roi.Polygons.Count);
+    }
+
+    [Fact]
+    public void LegacyFlatReader_StillRejectsXorWithoutMetadata()
+    {
+        DicomFile file = CreateMultiContourRoi(
+            "CLOSEDPLANAR_XOR",
+            "CLOSEDPLANAR_XOR");
+
+        Assert.Throws<NotSupportedException>(
+            () => new RtStructReader().ReadContours(file));
+    }
+
+    [Fact]
+    public void MixedXorAndOrdinaryContours_AreRejected()
+    {
+        DicomFile file = CreateMultiContourRoi(
+            "CLOSEDPLANAR_XOR",
+            "CLOSED_PLANAR");
+
+        InvalidOperationException exception =
+            Assert.Throws<InvalidOperationException>(
+                () => new RtStructReader().ReadRoiContours(file));
+
+        Assert.Contains("mixes", exception.Message);
+    }
+
+    [Fact]
+    public void SingleXorContour_IsRejectedByTypedReader()
+    {
+        DicomFile file = CreateMultiContourRoi(
+            "CLOSEDPLANAR_XOR");
+
+        InvalidOperationException exception =
+            Assert.Throws<InvalidOperationException>(
+                () => new RtStructReader().ReadRoiContours(file));
+
+        Assert.Contains("more than one", exception.Message);
+    }
+
+    private static DicomFile CreateMultiContourRoi(
+        params string[] geometricTypes)
+    {
+        var items = new List<DicomDataset>();
+
+        for (int i = 0; i < geometricTypes.Length; i++)
+        {
+            var contour = new DicomDataset();
+            contour.Add(
+                DicomTag.ContourGeometricType,
+                geometricTypes[i]);
+            contour.Add(DicomTag.NumberOfContourPoints, 4);
+
+            double inset = i == 0 ? 0.0 : 0.5;
+            contour.Add(
+                DicomTag.ContourData,
+                new double[]
+                {
+                    inset, inset, 0,
+                    4-inset, inset, 0,
+                    4-inset, 4-inset, 0,
+                    inset, 4-inset, 0
+                });
+
+            items.Add(contour);
+        }
+
+        var roiContour = new DicomDataset();
+        roiContour.Add(DicomTag.ReferencedROINumber, 7);
+        roiContour.Add(
+            new DicomSequence(
+                DicomTag.ContourSequence,
+                items.ToArray()));
+
+        var ds = new DicomDataset();
+        ds.Add(
+            new DicomSequence(
+                DicomTag.ROIContourSequence,
+                roiContour));
+
+        return CreateDicomFile(ds);
     }
 
     private static DicomFile CreateDicomFile(DicomDataset ds)

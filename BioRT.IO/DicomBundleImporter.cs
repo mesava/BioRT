@@ -121,15 +121,20 @@ public sealed class DicomBundleImporter
             _structReader.ReadStructureNames(
                 rtStructs[0].File);
 
-        var contours =
-            _structReader.ReadContours(
+        Dictionary<int, RoiContours> roiContours =
+            _structReader.ReadRoiContours(
                 rtStructs[0].File);
+
+        var contours = roiContours.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Polygons);
 
         return new DicomImportResult
         {
             Plan = plan,
             StructureNames = structureNames,
             Contours = contours,
+            RoiContours = roiContours,
             SourceFiles = new[]
             {
                 rtPlans[0].Name,

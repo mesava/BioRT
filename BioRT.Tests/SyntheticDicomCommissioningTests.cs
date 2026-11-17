@@ -43,8 +43,13 @@ public class SyntheticDicomCommissioningTests
             IReadOnlyDictionary<int, string> folderNames =
                 structReader.ReadStructureNames(folderStruct);
 
+            IReadOnlyDictionary<int, RoiContours> folderRois =
+                structReader.ReadRoiContours(folderStruct);
+
             IReadOnlyDictionary<int, List<double[]>> folderContours =
-                structReader.ReadContours(folderStruct);
+                folderRois.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.Polygons);
 
             // Web-equivalent stream path.
             DicomImportResult streamImport =
@@ -65,6 +70,7 @@ public class SyntheticDicomCommissioningTests
                         Plan = folderPlan,
                         StructureNames = folderNames,
                         Contours = folderContours,
+                        RoiContours = folderRois,
                         Criteria = criteria
                     });
 
@@ -75,6 +81,7 @@ public class SyntheticDicomCommissioningTests
                         Plan = streamImport.Plan,
                         StructureNames = streamImport.StructureNames,
                         Contours = streamImport.Contours,
+                        RoiContours = streamImport.RoiContours,
                         Criteria = criteria
                     });
 
@@ -113,7 +120,7 @@ public class SyntheticDicomCommissioningTests
             Assert.Equal("PTV_60", folderPtv.MatchedStructureName);
             Assert.Equal(60.0, folderPtv.D50Gy, precision: 12);
 
-            Assert.Equal(3, folderAnalysis.ClinicalCriteria.Count);
+            Assert.Equal(4, folderAnalysis.ClinicalCriteria.Count);
 
             ClinicalCriterionEvaluation oar =
                 Assert.Single(
@@ -127,6 +134,19 @@ public class SyntheticDicomCommissioningTests
                 2,
                 folderAnalysis.ClinicalCriteria.Count(c =>
                     c.MatchedStructureName == "PTV_60"));
+            
+            StructureAnalysisResult ring =
+                Assert.Single(folderAnalysis.Structures.Where(
+                    s => s.Name == "RING"));
+
+            Assert.Equal(0.003, ring.VolumeCc, precision: 12);
+
+            ClinicalCriterionEvaluation ringGoal =
+                Assert.Single(folderAnalysis.ClinicalCriteria.Where(
+                    goal => goal.MatchedStructureName == "RING"));
+
+            Assert.True(ringGoal.Pass);
+            Assert.Equal(60.0, ringGoal.Value, precision: 12);
         }
         finally
         {
@@ -159,6 +179,14 @@ public class SyntheticDicomCommissioningTests
             new DoseCriterion
             {
                 StructureName = "OAR",
+                Type = CriterionType.Dmean,
+                Operator = "<=",
+                Limit = 65.0,
+                Raw = "Dmean <= 65 Gy"
+            },
+            new DoseCriterion
+            {
+                StructureName = "RING",
                 Type = CriterionType.Dmean,
                 Operator = "<=",
                 Limit = 65.0,
@@ -295,6 +323,10 @@ public class SyntheticDicomCommissioningTests
         oarRoi.Add(DicomTag.ROINumber, 2);
         oarRoi.Add(DicomTag.ROIName, "OAR");
 
+        var ringRoi = new DicomDataset();
+        ringRoi.Add(DicomTag.ROINumber, 3);
+        ringRoi.Add(DicomTag.ROIName, "RING");
+
         var ptvContour = new DicomDataset();
         ptvContour.Add(DicomTag.ContourGeometricType, "CLOSED_PLANAR");
         ptvContour.Add(DicomTag.NumberOfContourPoints, 4);
@@ -319,6 +351,32 @@ public class SyntheticDicomCommissioningTests
                 DicomTag.ContourSequence,
                 oarContour));
 
+        var outerRing = new DicomDataset();
+        outerRing.Add(DicomTag.ContourGeometricType, "CLOSEDPLANAR_XOR");
+        outerRing.Add(DicomTag.NumberOfContourPoints, 4);
+        outerRing.Add(DicomTag.ContourData, square);
+
+        var innerRing = new DicomDataset();
+        innerRing.Add(DicomTag.ContourGeometricType, "CLOSEDPLANAR_XOR");
+        innerRing.Add(DicomTag.NumberOfContourPoints, 4);
+        innerRing.Add(
+            DicomTag.ContourData,
+            new double[]
+            {
+                0.5, 0.5, 0.0,
+                1.5, 0.5, 0.0,
+                1.5, 1.5, 0.0,
+                0.5, 1.5, 0.0
+            });
+
+        var ringRoiContour = new DicomDataset();
+        ringRoiContour.Add(DicomTag.ReferencedROINumber, 3);
+        ringRoiContour.Add(
+            new DicomSequence(
+                DicomTag.ContourSequence,
+                outerRing,
+                innerRing));
+
         var dataset =
             new DicomDataset(
                 DicomTransferSyntax.ExplicitVRLittleEndian);
@@ -332,13 +390,15 @@ public class SyntheticDicomCommissioningTests
             new DicomSequence(
                 DicomTag.StructureSetROISequence,
                 ptvRoi,
-                oarRoi));
+                oarRoi,
+                ringRoi));
 
         dataset.Add(
             new DicomSequence(
                 DicomTag.ROIContourSequence,
                 ptvRoiContour,
-                oarRoiContour));
+                oarRoiContour,
+                ringRoiContour));
 
         return new DicomFile(dataset);
     }

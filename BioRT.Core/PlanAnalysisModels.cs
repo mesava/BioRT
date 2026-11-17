@@ -11,6 +11,9 @@ public sealed class PlanAnalysisRequest
 
     public required IReadOnlyDictionary<int, List<double[]>> Contours { get; init; }
 
+    // Optional for hand-built test inputs; populated by both DICOM entry paths.
+    public IReadOnlyDictionary<int, RoiContours>? RoiContours { get; init; }
+
     public IReadOnlyList<DoseCriterion> Criteria { get; init; } =
         Array.Empty<DoseCriterion>();
 

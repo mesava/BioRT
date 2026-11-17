@@ -7,7 +7,8 @@ public class MaskBuilder
     public static StructureMask BuildMask(
         string name,
         List<double[]> contours,
-        DoseVolume dose)
+        DoseVolume dose,
+        RoiContourFillRule fillRule = RoiContourFillRule.Union)
     {
         int nx = dose.SizeX;
         int ny = dose.SizeY;
@@ -51,6 +52,33 @@ public class MaskBuilder
 
             contoursBySlice[k].Add(contour);
         }
+        // XOR polygons must come from a single contour-Z plane for each
+        // dose frame. Distinct planes rounded onto the same frame cannot
+        // be XORed without validated resampling.
+        if (fillRule == RoiContourFillRule.Xor)
+        {
+            foreach (var slice in contoursBySlice)
+            {
+                double planeZ = slice.Value[0][2];
+
+                if (slice.Value.Any(
+                        polygon => Math.Abs(polygon[2] - planeZ) > 1e-3))
+                {
+                    throw new NotSupportedException(
+                        $"RTSTRUCT ROI '{name}': distinct contour-Z planes " +
+                        "map to one RTDOSE frame; XOR Z-resampling " +
+                        "is not validated.");
+                }
+
+                if (Math.Abs(planeZ - zPos[slice.Key]) >
+                    dose.SpacingZ / 2.0 + 1e-3)
+                {
+                    throw new NotSupportedException(
+                        $"RTSTRUCT ROI '{name}': XOR contour plane " +
+                        "lies outside nearest dose-slice extent.");
+                }
+            }
+        }
 
         // ================= Rasterization =================
 
@@ -70,15 +98,29 @@ public class MaskBuilder
                     // and SpacingY (rows) by RtDoseReader.
                     double x = x0 + i * dx;
                     double y = y0 + j * dy;
+                    bool inside = false;
 
-                    foreach (var contour in sliceContours)
+                    foreach (double[] contour in sliceContours)
                     {
-                        if (PointInPolygon(x, y, contour))
+                        if (!PointInPolygon(x, y, contour))
+                            continue;
+
+                        if (fillRule == RoiContourFillRule.Xor)
                         {
-                            mask[i, j, k] = true;
-                            filled++;
+                            // DICOM CLOSEDPLANAR_XOR: parity of all polygons.
+                            inside = !inside;
+                        }
+                        else
+                        {
+                            inside = true;
                             break;
                         }
+                    }
+
+                    if (inside)
+                    {
+                        mask[i, j, k] = true;
+                        filled++;
                     }
                 }
         }
