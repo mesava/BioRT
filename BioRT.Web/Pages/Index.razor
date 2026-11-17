@@ -1,5 +1,6 @@
 @page "/"
 @using System.Text
+@using BioRT.Core.DVH
 @inject ModelCatalogService Catalog
 @inject DicomBundleImporter DicomImporter
 @inject PlanAnalysisService AnalysisService
@@ -225,6 +226,50 @@
                             разрешение дозовой сетки.
                         </p>
                     </section>
+                }
+
+                @if (GeometryAuditRows.Count > 0)
+                {
+                    <details class="result-block">
+                        <summary>Геометрия RTSTRUCT ↔ RTDOSE — диагностический аудит (@GeometryAuditRows.Count ROI)</summary>
+                        <p class="hint">
+                            Только диагностика: разные контурные Z-плоскости могут
+                            попадать на один слой RTDOSE, а контуры могут выходить
+                            за его Z-охват. Нулевая коллизия НЕ означает валидацию DVH.
+                            Межслойный интеграл площадей (если доступен) не является
+                            геометрическим объёмом TPS и не используется в Dcc/Vcc.
+                            Показатели этого раздела не влияют на commissioning SHA-256.
+                        </p>
+                        <div class="table-scroll">
+                            <table class="result-table">
+                                <thead>
+                                    <tr>
+                                        <th>ROI</th>
+                                        <th>Плоскости Z</th>
+                                        <th>Коллизии срезов</th>
+                                        <th>Вне RTDOSE</th>
+                                        <th>Max ΔZ, мм</th>
+                                        <th>Интеграл между слоями, см³</th>
+                                        <th>Ограничения</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in GeometryAuditRows)
+                                    {
+                                        <tr>
+                                            <td>@row.Name</td>
+                                            <td>@row.ContourPlanes</td>
+                                            <td>@row.Collisions</td>
+                                            <td>@row.Outside</td>
+                                            <td>@(row.MaxDistanceMm?.ToString("F2") ?? "—")</td>
+                                            <td>@(row.InterplaneVolumeCc?.ToString("F3") ?? "—")</td>
+                                            <td>@(row.Note ?? "Ограниченная проверка; TPS-валидация не выполнена")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
                 }
 
                 @if (AnalysisResult.ClinicalCriteria.Count > 0)
@@ -485,6 +530,8 @@
     private string CriteriaStatus = "Criteria JSON: не найден";
     private string ClinicalContextStatus = "Clinical context: не задан";
     private string? AnalysisFingerprint;
+    private IReadOnlyList<GeometryAuditRow> GeometryAuditRows =
+        Array.Empty<GeometryAuditRow>();
     private bool IsImporting;
 
     private IReadOnlyList<CatalogModel> NtcpModels = Array.Empty<CatalogModel>();
@@ -519,6 +566,7 @@
         ImportedDicom = null;
         AnalysisResult = null;
         AnalysisFingerprint = null;
+        GeometryAuditRows = Array.Empty<GeometryAuditRow>();
         ImportError = null;
         CriteriaStatus = "Criteria JSON: не найден";
         ClinicalContextStatus = "Clinical context: не задан";
@@ -682,6 +730,10 @@
                 PlanAnalysisFingerprint.Compute(
                     ImportedDicom.Plan,
                     AnalysisResult);
+
+            // Informative QA only. No mutation of PlanAnalysisResult
+            // or canonical fingerprint payload.
+            BuildGeometryAuditRows();
         }
         catch (Exception ex)
         {
@@ -693,6 +745,79 @@
             IsImporting = false;
         }
     }
+
+    private void BuildGeometryAuditRows()
+    {
+        if (ImportedDicom?.Plan.Dose == null)
+            return;
+
+        var results = new List<GeometryAuditRow>();
+
+        foreach (var entry in ImportedDicom.RoiContours.OrderBy(x => x.Key))
+        {
+            string name =
+                ImportedDicom.StructureNames.TryGetValue(
+                    entry.Key,
+                    out string? structureName)
+                    ? structureName
+                    : $"ROI #{entry.Key}";
+
+            if (entry.Value.Polygons.Count == 0)
+            {
+                results.Add(new GeometryAuditRow(
+                    name, 0, 0, 0, null, null, "Контуры отсутствуют"));
+                continue;
+            }
+
+            try
+            {
+                ContourZGeometryReport z =
+                    ContourZGeometryAudit.Analyze(
+                        entry.Value.Polygons,
+                        ImportedDicom.Plan.Dose);
+
+                ContourInterplaneVolumeResult volume =
+                    SimpleContourInterplaneVolume.Estimate(
+                        entry.Value);
+
+                string? note =
+                    volume.UnavailableReason;
+
+                if (!z.HasKnownDoseSlabThickness)
+                {
+                    note = "Один кадр RTDOSE: Z-толщина неизвестна. " + note;
+                }
+
+                results.Add(new GeometryAuditRow(
+                    name,
+                    z.UniqueContourPlaneCount,
+                    z.CollidingDoseFrameCount,
+                    z.OutsideDosePlaneCount,
+                    z.MaximumNearestDoseDistanceMm,
+                    volume.InterplaneVolumeCc,
+                    note));
+            }
+            catch (Exception ex)
+            {
+                // A diagnostic must never invalidate otherwise completed
+                // DICOM/DVH/TCP/NTCP analysis. Show its error separately.
+                results.Add(new GeometryAuditRow(
+                    name, 0, 0, 0, null, null,
+                    "Аудит недоступен: " + ex.Message));
+            }
+        }
+
+        GeometryAuditRows = results;
+    }
+
+    private sealed record GeometryAuditRow(
+        string Name,
+        int ContourPlanes,
+        int Collisions,
+        int Outside,
+        double? MaxDistanceMm,
+        double? InterplaneVolumeCc,
+        string? Note);
 
     private static async Task<string> ReadBrowserTextFile(
         IBrowserFile file)
