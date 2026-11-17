@@ -14,6 +14,22 @@ public static class DoseMetricCalculator
                 "Dx% must be a finite percentage from 0 through 100.");
         }
 
+        // D0% is the hottest point; D100% approximates the coldest
+        // occupied histogram bin, not the (always 100%) zero-dose bin.
+        if (percent == 0.0)
+            return dvh.MaxDose;
+
+        if (percent == 100.0)
+        {
+            for (int i = 1; i < dvh.Volume.Length; i++)
+            {
+                if (dvh.Volume[i] < 100.0)
+                    return dvh.Dose[i - 1];
+            }
+
+            return dvh.Dose.Last();
+        }
+
         for (int i = 0; i < dvh.Volume.Length; i++)
         {
             if (dvh.Volume[i] <= percent)
