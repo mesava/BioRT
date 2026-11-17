@@ -1,6 +1,6 @@
 # Realistic commissioning case 001
 
-Status: **historical realistic Web baseline captured before the geometry fixes; post-fix re-commissioning is pending.**
+Status: **Web re-commissioning after geometry fixes completed; same-case independent Console agreement and geometric volume reference remain pending.**
 
 The source archive is a hypothetical/synthetic-patient RT export supplied for commissioning. It is intentionally **not committed** to the public repository.
 
@@ -198,8 +198,8 @@ After PR #38/#39, acceptance must be reconsidered:
 - PR #38 fixes in-plane voxel-centre alignment for axis-aligned RTDOSE; this may change which voxels intersect an ROI.
 - PR #39 rejects unsupported `ContourGeometricType` entries instead of silently treating XOR/open/point contours as filled polygons; it also validates point counts and axial contour planes.
 - Original RTSTRUCT contains 545 `CLOSED_PLANAR` contours and none of the newly rejected types.
-- New expected structure volumes, DVHs, PTV/OAR metrics, clinical criteria, model outputs and full SHA-256 have **not yet** been captured on the corrected release.
-- The 21/21 PASS and the historical numerical values above are not automatically carried over to the corrected mask algorithm.
+- Post-geometry Web results and full SHA-256 **have now been captured** (below). They supersede the historical values for the current axial-mask algorithm; they are **not** an independent validation against TPS.
+- The updated screenshot confirms all 21 explicit Monaco criteria PASS.
 - The strict realistic Web↔Console same-case match remains pending.
 
 Next geometry work remains tracked in issue #29:
@@ -209,3 +209,54 @@ Next geometry work remains tracked in issue #29:
 - new same-version Web/Console commissioning after the corrected geometry is published.
 
 The source DICOM archive remains outside the public repository.
+
+
+## Second Web baseline — after PR #38 and PR #39
+
+The same **fully hypothetical** case was processed again on the deployed BioRT Web build after the IPP voxel-centre correction and contour-type safety guard.
+
+Full Web SHA-256, reported on 2026-11-17:
+
+```text
+d15422b0697ba418e944af9496e209a2d460b7972766d1482b6ecbe250c11dac
+```
+
+This is a **Web-only** reference; the same-case Console SHA-256 has **not** been independently obtained.
+
+### Corrected PTV metrics (read from Web screenshot)
+
+| Metric | Historical, before geometry correction | Web, corrected axial mask |
+|---|---:|---:|
+| Volume, cm³ | 274.44 | 274.66 |
+| Rx, Gy | 60.00 | 60.00 |
+| D2, Gy | 63.40 | 63.40 |
+| D98, Gy | 59.70 | 59.80 |
+| D95, Gy | 60.30 | 60.30 |
+| D50, Gy | 61.70 | 61.70 |
+| HI | 1.062 | 1.060 |
+| CI | 0.919 | 0.928 |
+| GI | 3.014 | 3.014 |
+
+Volume delta: +0.22 cm³ (~0.08%). Small changes do not establish geometry correctness by themselves.
+
+The screenshot shows **21/21 Monaco goals PASS**. Key corrected non-PTV values shown:
+- Patient D2: 62.00 Gy;
+- Brainstem Dmax: 36.85 Gy;
+- Cochlea_L/R Dmean: 1.58 / 1.55 Gy;
+- Eye_L Dmax/Dmean: 16.95 / 3.66 Gy;
+- Eye_R Dmax/Dmean: 8.73 / 2.25 Gy;
+- Lens_L/R Dmean: 2.04 / 1.82 Gy;
+- OpticChiasm Dmax: 9.29 Gy;
+- OpticNrv_L/R Dmax: 7.68 / 6.57 Gy;
+- SpinalCord Dmax: 0.69 Gy.
+
+Clinical goals reported PASS are the Monaco **imported criteria**, not independent treatment-plan acceptance.
+
+### Strict acceptance still outstanding
+
+- Independently reproduce the full hash with physical-folder Console on exactly the same source DICOM/JSON files, scientific parameter-library version and application commit.
+- Validate geometric and dose-grid volumes against analytically known geometries and independent references, especially for small structures / Dcc / Vcc.
+- Add topology-aware XOR/keyhole validation and Z sampling checks before expanding to general DICOM RT.
+- Every future geometry algorithm revision requires a new version-scoped regression fingerprint and a documented migration of expected metrics.
+
+**No patient/source DICOM is committed to the public repository.**
