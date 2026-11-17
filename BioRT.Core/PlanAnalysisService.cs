@@ -203,6 +203,7 @@ public sealed class PlanAnalysisService
         return BuildStructureDvh(
             match.Value.Value,
             contours,
+            match.Value.Key,
             request,
             volumes,
             masks,
@@ -329,6 +330,7 @@ public sealed class PlanAnalysisService
         return BuildStructureDvh(
             match.Value,
             contours,
+            match.Key,
             request,
             volumes,
             masks,
@@ -338,16 +340,26 @@ public sealed class PlanAnalysisService
     private static StructureDVH? BuildStructureDvh(
         string name,
         List<double[]> contours,
+        int roiNumber,
         PlanAnalysisRequest request,
         IDictionary<string, double> volumes,
         IDictionary<string, StructureMask> masks,
         double voxelVolumeCc)
     {
+        // Preserve the DICOM ROI fill rule on both Console and Web paths.
+        // Legacy in-memory test requests continue to use union contours.
         StructureMask mask =
-            MaskBuilder.BuildMask(
-                name,
-                contours,
-                request.Plan.Dose);
+            request.RoiContours != null &&
+            request.RoiContours.TryGetValue(roiNumber, out RoiContours? roi)
+                ? MaskBuilder.BuildMask(
+                    name,
+                    roi.Polygons,
+                    request.Plan.Dose,
+                    roi.FillRule)
+                : MaskBuilder.BuildMask(
+                    name,
+                    contours,
+                    request.Plan.Dose);
 
         double volumeCc =
             mask.Mask.Cast<bool>().Count(v => v) *
