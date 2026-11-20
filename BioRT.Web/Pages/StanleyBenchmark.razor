@@ -86,6 +86,64 @@
                 Совпадение с аналитическим объёмом или другим
                 расчётом ещё не является клинической валидацией.
             </p>
+            @if (AnalyticalReference is not null)
+            {
+                <h3>Аналитический эталон Stanley (Equation 1)</h3>
+                <p class="hint">
+                    Параметры: s₁=0,249, s₂=7,019, s₃=0,029,
+                    s₄=1,927. Доза на поверхности сферы — 20 Гр.
+                    V20Gy — аналитический объём сферы,
+                    V10Gy — аналитический объём внешней изодозы 10 Гр.
+                    Это независимая математическая модель,
+                    а не значение, подобранное под DICOM.
+                </p>
+                <div class="table-scroll">
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>Метрика</th>
+                                <th>Аналитическая, см³</th>
+                                <th>Средняя по GTV/SHELL, см³</th>
+                                <th>Δ, %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>V(GTV) / V20Gy, геометрия</td>
+                                <td>@AnalyticalReference.V20GyCc.ToString("F6")</td>
+                                <td>@(Report.Spheres.Average(s => s.SampledTargetVolumeCc).ToString("F6"))</td>
+                                <td>@(PercentDelta(Report.Spheres.Average(s => s.SampledTargetVolumeCc), AnalyticalReference.V20GyCc).ToString("F3"))</td>
+                            </tr>
+                            <tr>
+                                <td>V20Gy (GTVxx_SHELL)</td>
+                                <td>@AnalyticalReference.V20GyCc.ToString("F6")</td>
+                                <td>@(Report.Spheres.Average(s => s.V20GyCc).ToString("F6"))</td>
+                                <td>@(PercentDelta(Report.Spheres.Average(s => s.V20GyCc), AnalyticalReference.V20GyCc).ToString("F3"))</td>
+                            </tr>
+                            <tr>
+                                <td>V10Gy (GTVxx_SHELL)</td>
+                                <td>@AnalyticalReference.V10GyCc.ToString("F6")</td>
+                                <td>@(Report.Spheres.Average(s => s.V10GyCc).ToString("F6"))</td>
+                                <td>@(PercentDelta(Report.Spheres.Average(s => s.V10GyCc), AnalyticalReference.V10GyCc).ToString("F3"))</td>
+                            </tr>
+                            <tr>
+                                <td>GI = V10Gy / V20Gy (безразмерный)</td>
+                                <td>@AnalyticalReference.GradientIndex.ToString("F6")</td>
+                                <td>@(MeanGi?.ToString("F6") ?? "—")</td>
+                                <td>@(MeanGi is double meanGi ? PercentDelta(meanGi, AnalyticalReference.GradientIndex).ToString("F3") : "—")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint">
+                    Разность вычислена как (среднее по воксельным DICOM /
+                    аналитический эталон − 1) × 100%.
+                    Она не является клиническим допуском или PASS/FAIL.
+                    Важно: средний GI — среднее отношений по сферам,
+                    а не отношение двух средних объёмов.
+                </p>
+            }
+
             <div class="table-scroll">
                 <table class="result-table">
                     <thead>
@@ -120,9 +178,10 @@
                 </table>
             </div>
             <p class="hint">
-                В режиме разработки. Не включает сравнение с Monaco 6.1.4,
-                точной аналитической формулой распределения дозы
-                или независимую метрологическую приёмку.
+                В режиме разработки. Аналитический эталон Stanley
+                вычисляется независимо от загруженного DICOM;
+                сравнение с Monaco 6.1.4 и клиническая
+                метрологическая приёмка ещё не выполнены.
                 Для сопоставления используйте
                 docs/stanley-srs-sphere10-pilot-results.md.
             </p>
@@ -140,12 +199,23 @@
     private bool IsImporting;
     private string? Error;
     private StanleySphereBenchmarkResult? Report;
+    private StanleyAnalyticalVolumes? AnalyticalReference;
+
+    private static double PercentDelta(double observed, double reference)
+        => 100.0 * (observed / reference - 1.0);
+
+    private double? MeanGi =>
+        Report is not null &&
+        Report.Spheres.All(s => s.PaddickGradientIndex.HasValue)
+            ? Report.Spheres.Average(s => s.PaddickGradientIndex!.Value)
+            : null;
 
     private async Task HandleFiles(InputFileChangeEventArgs args)
     {
         IsImporting = true;
         Error = null;
         Report = null;
+        AnalyticalReference = null;
 
         try
         {
@@ -199,6 +269,9 @@
                 dicom.StructureNames,
                 dicom.RoiContours,
                 DiameterMm);
+
+            AnalyticalReference =
+                StanleyAnalyticalDoseReference.Calculate(DiameterMm);
         }
         catch (Exception ex)
         {
