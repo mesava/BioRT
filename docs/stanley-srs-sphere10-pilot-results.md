@@ -60,6 +60,8 @@ calculation for small-volume radiosurgery targets*, Medical Physics,
 Не используй результаты с 32-битным RTDOSE, рассчитанные
 старой версией BioRT.
 
+Заголовки **всех 12 RTDOSE** дополнительно проверены: каждый использует Transfer Syntax Implicit VR Little Endian, unsigned BitsAllocated=32 и DoseGridScaling=2E-05. При шаге CT 0,5 мм в RTDOSE 501 кадр, при шаге CT 1 мм — 251 кадр.
+
 RTSTRUCT:
 - **101 ROI**: BODY, 50 GTVxx и 50 GTVxx_SHELL;
 - **2043** контура, тип CLOSED_PLANAR;
