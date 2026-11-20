@@ -1,0 +1,212 @@
+@page "/stanley-benchmark"
+@using BioRT.Core.DVH
+@inject DicomBundleImporter DicomImporter
+
+<PageTitle>Stanley SRS — DICOM benchmark | BioRT</PageTitle>
+
+<section class="section">
+    <div class="section-heading">
+        <p class="eyebrow">Исследовательская валидация</p>
+        <h1>Stanley SRS — независимый DICOM benchmark</h1>
+        <p>
+            Научная проверка объёмов сфер и дозовых изоповерхностей
+            из Stanley et al., Medical Physics (2021), DOI:
+            <a href="https://doi.org/10.1002/mp.14645"
+               target="_blank" rel="noopener noreferrer">10.1002/mp.14645</a>.
+        </p>
+        <p>
+            Эта страница не использует клинические TCP/NTCP-модели и
+            не выставляет PASS/FAIL по плану. Все файлы остаются
+            в памяти вашего браузера, DICOM на сервер не отправляется.
+        </p>
+    </div>
+
+    <div class="calculator-card">
+        <p class="hint">
+            Выберите <strong>только один согласованный набор</strong>:
+            ZIP с RTPLAN + RTDOSE + RTSTRUCT либо три отдельных DICOM.
+            Не выбирайте полный архив приложения (788 DICOM и более
+            2,9 ГБ распакованных данных).
+            Для первого опыта рекомендуется Sphere_10mm, CT 1 мм.
+        </p>
+
+        <label>
+            Номинальный диаметр сфер:
+            <select @bind="DiameterMm" disabled="@IsImporting">
+                <option value="3">3 мм</option>
+                <option value="5">5 мм</option>
+                <option value="7">7 мм</option>
+                <option value="10">10 мм</option>
+                <option value="15">15 мм</option>
+                <option value="20">20 мм</option>
+            </select>
+        </label>
+
+        <p class="hint">
+            Диаметр должен совпадать с выбранной серией DICOM.
+            Аналитический объём вычисляется по формуле πd³/6;
+            он не подбирается под результаты BioRT.
+        </p>
+
+        <InputFile OnChange="HandleFiles"
+                   multiple
+                   disabled="@IsImporting" />
+
+        @if (IsImporting)
+        {
+            <p>Идёт локальный импорт DICOM и вычисление сфер...</p>
+        }
+
+        @if (Error is not null)
+        {
+            <p role="alert" style="color: #9b2525;">
+                <strong>Benchmark не выполнен:</strong> @Error
+            </p>
+        }
+
+        @if (Report is not null)
+        {
+            <h2>Дискретный анализ RTDOSE / RTSTRUCT</h2>
+            <p>
+                Сфер обработано: <strong>@Report.SphereCount</strong>.
+                Шаг дозового вокселя задаёт объём
+                <strong>@Report.VoxelVolumeCc.ToString("F6") см³</strong>.
+                Среднее относительное отклонение объёма GTV от
+                аналитической сферы:
+                <strong>@Report.MeanTargetVolumeDifferencePercent.ToString("F3")%</strong>.
+            </p>
+            <p class="hint">
+                Метрика V20Gy / V10Gy рассчитывается на
+                <strong>GTVxx_SHELL</strong>, а не на самом GTV,
+                с порогом dose ≥ 20 / ≥ 10 Гр.
+                Показатели вычислены по центрам вокселей RTDOSE
+                методом ближайшей контурной Z-плоскости
+                в текущей производственной трактовке BioRT;
+                без непрерывной интерполяции геометрии.
+                Совпадение с аналитическим объёмом или другим
+                расчётом ещё не является клинической валидацией.
+            </p>
+            <div class="table-scroll">
+                <table class="result-table">
+                    <thead>
+                        <tr>
+                            <th>GTV</th>
+                            <th>Vаналит., см³</th>
+                            <th>Vсет., см³</th>
+                            <th>ΔV, %</th>
+                            <th>V20Gy SHELL, см³</th>
+                            <th>V10Gy SHELL, см³</th>
+                            <th>CI RTOG</th>
+                            <th>GI Paddick</th>
+                            <th>Dmean GTV, Гр</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (StanleySphereBenchmarkRow sphere in Report.Spheres)
+                        {
+                            <tr>
+                                <td>@sphere.Target</td>
+                                <td>@sphere.AnalyticalSphereVolumeCc.ToString("F5")</td>
+                                <td>@sphere.SampledTargetVolumeCc.ToString("F4")</td>
+                                <td>@sphere.TargetVolumeDifferencePercent.ToString("F3")</td>
+                                <td>@sphere.V20GyCc.ToString("F4")</td>
+                                <td>@sphere.V10GyCc.ToString("F4")</td>
+                                <td>@sphere.RtOGConformityIndex.ToString("F4")</td>
+                                <td>@(sphere.PaddickGradientIndex?.ToString("F4") ?? "—")</td>
+                                <td>@sphere.TargetMeanDoseGy.ToString("F3")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="hint">
+                В режиме разработки. Не включает сравнение с Monaco 6.1.4,
+                точной аналитической формулой распределения дозы
+                или независимую метрологическую приёмку.
+                Для сопоставления используйте
+                docs/stanley-srs-sphere10-pilot-results.md.
+            </p>
+        }
+    </div>
+
+    <p><a href="./">Вернуться к BioRT — TCP/NTCP</a></p>
+</section>
+
+@code {
+    private const long MaxBrowserFileSize = 256L * 1024L * 1024L;
+    private const long MaxExpandedZipBytes = 256L * 1024L * 1024L;
+
+    private int DiameterMm = 10;
+    private bool IsImporting;
+    private string? Error;
+    private StanleySphereBenchmarkResult? Report;
+
+    private async Task HandleFiles(InputFileChangeEventArgs args)
+    {
+        IsImporting = true;
+        Error = null;
+        Report = null;
+
+        try
+        {
+            IReadOnlyList<IBrowserFile> files =
+                args.GetMultipleFiles(maximumFileCount: 3);
+
+            var inputs = new List<DicomInputFile>();
+
+            if (files.Count == 1 &&
+                files[0].Name.EndsWith(
+                    ".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                await using Stream source =
+                    files[0].OpenReadStream(MaxBrowserFileSize);
+
+                IReadOnlyList<ArchiveBundleEntry> entries =
+                    await ArchiveBundleReader.ReadAsync(
+                        source,
+                        maxEntries: 3,
+                        maxExpandedBytes: MaxExpandedZipBytes);
+
+                if (entries.Count != 3)
+                    throw new InvalidOperationException(
+                        "Выберите ZIP с ровно тремя DICOM: " +
+                        "RTPLAN, RTDOSE и RTSTRUCT.");
+
+                inputs.AddRange(
+                    entries.Select(
+                        ArchiveBundleReader.ToDicomInputFile));
+            }
+            else if (files.Count == 3 &&
+                     files.All(f => f.Name.EndsWith(
+                         ".dcm", StringComparison.OrdinalIgnoreCase)))
+            {
+                inputs.AddRange(files.Select(f =>
+                    BrowserDicomInputFileFactory.Create(
+                        f, MaxBrowserFileSize)));
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "Выберите один ZIP с тремя DICOM или " +
+                    "три отдельных файла RTPLAN/RTDOSE/RTSTRUCT.");
+            }
+
+            DicomImportResult dicom =
+                await DicomImporter.LoadAsync(inputs);
+
+            Report = StanleySphereBenchmark.Evaluate(
+                dicom.Plan.Dose,
+                dicom.StructureNames,
+                dicom.RoiContours,
+                DiameterMm);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+        finally
+        {
+            IsImporting = false;
+        }
+    }
+}
