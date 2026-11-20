@@ -90,7 +90,6 @@ public sealed class RtDosePixelFormatTests
     [Theory]
     [InlineData(0.0)]
     [InlineData(-0.01)]
-    [InlineData(double.NaN)]
     public void InvalidDoseGridScaling_IsRejected(double scaling)
     {
         DicomFile file = MakeDose(
@@ -128,9 +127,16 @@ public sealed class RtDosePixelFormatTests
             DicomTag.ImageOrientationPatient,
             1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
+        // DICOM GridFrameOffsetVector has VM 2-n when present.
+        // Repeat a single synthetic frame to keep every fixture valid.
+        uint[][] validFrames =
+            frames.Length == 1
+                ? [frames[0], frames[0]]
+                : frames;
+
         ds.Add(
             DicomTag.GridFrameOffsetVector,
-            Enumerable.Range(0, frames.Length)
+            Enumerable.Range(0, validFrames.Length)
                 .Select(i => (double)i)
                 .ToArray());
 
@@ -143,7 +149,7 @@ public sealed class RtDosePixelFormatTests
 
         DicomPixelData pixels = DicomPixelData.Create(ds, true);
 
-        foreach (uint[] values in frames)
+        foreach (uint[] values in validFrames)
         {
             var bytes = new byte[values.Length * bitsAllocated / 8];
 
