@@ -18,7 +18,8 @@
 - Полный детерминированный SHA-256 commissioning fingerprint для строгого сравнения Web ↔ Console.
 - Tolerance-based `PlanAnalysisComparator` для cross-version regression.
 - Автоматический synthetic DICOM commissioning folder-path ↔ stream-path.
-- Первый realistic browser commissioning case загружен и зафиксирован как исторический baseline; после исправления геометрии требуется новый расчёт.
+- Первый realistic commissioning case содержит исторический и повторный Web baseline; новый SHA-256 после исправления геометрии зафиксирован в документации, но независимый Console SHA-256 ещё ожидается.
+- Поддержка unsigned 16/32-bit RTDOSE и исследовательский benchmark Stanley SRS (50 сфер и evaluation shell) на отдельной Web-странице.
 - TG-166 математические/аналитические regression tests.
 - GitHub Actions для scientific CI, Web CI и GitHub Pages.
 
@@ -30,7 +31,15 @@
 https://mesava.github.io/BioRT/
 ```
 
-GitHub Pages deployment включён и успешно развёртывает `BioRT.Web`.
+GitHub Pages deployment включён и развёртывает `BioRT.Web`.
+
+Исследовательский benchmark аналитических сфер Stanley (отдельно от клинического калькулятора):
+
+```text
+https://mesava.github.io/BioRT/stanley-benchmark
+```
+
+Он принимает **один согласованный RTPLAN + RTDOSE + RTSTRUCT** и рассчитывает GTV/shell V20Gy, V10Gy, объёмы и CI/GI без TCP/NTCP. Весь оригинальный Stanley ZIP загружать нельзя; подробности в `docs/stanley-srs-sphere10-pilot-results.md`.
 
 `BioRT.Web` локально в памяти браузера принимает:
 - один ZIP с согласованным RT-набором; либо
@@ -56,12 +65,14 @@ Web UI выводит физические метрики плана, PASS/FAIL 
 
 DICOM не должен уходить на внешний сервер только ради расчёта: архитектура оставляет RTPLAN / RTDOSE / RTSTRUCT локально в памяти браузера.
 
-Автоматический synthetic Web↔Console input-path commissioning проходит в CI. Первый realistic synthetic-patient browser case прошёл DICOM→analysis pipeline, но его baseline SHA-256 относится к версии **до исправления координат центров вокселей**. После PR #38/#39 необходима повторная проверка того же архива; подробности в `docs/commissioning-realistic-case-001.md`.
+Автоматический synthetic Web↔Console input-path commissioning проходит в CI. Для hypothetical-patient case 001 повторный Web SHA-256 **после** исправлений геометрии зафиксирован как `d15422b0697ba418e944af9496e209a2d460b7972766d1482b6ecbe250c11dac`; строгий независимый Console↔Web same-case match остаётся незавершённым. Подробности в `docs/commissioning-realistic-case-001.md`.
 
 Подробнее:
 - `docs/web-architecture.md`
 - `docs/web-console-commissioning.md`
 - `docs/commissioning-realistic-case-001.md`
+- `docs/stanley-srs-benchmark-protocol.md`
+- `docs/stanley-srs-sphere10-pilot-results.md`
 - `docs/tolerance-comparison.md`
 
 ## Проекты
