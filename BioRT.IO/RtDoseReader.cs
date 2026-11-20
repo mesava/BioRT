@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using BioRT.Core.Models;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
@@ -158,20 +159,81 @@ public sealed class RtDoseReader
             }
         }
 
+        // RT Dose Pixel Data can use unsigned 16-bit or unsigned 32-bit
+        // stored samples (e.g. Stanley et al. DICOM SRS benchmark uses
+        // 32-bit UINT with scaling 2E-05). Reading a 32-bit sample as
+        // two separate UInt16 values silently corrupts every dose.
+        int bitsAllocated =
+            ds.GetSingleValue<int>(DicomTag.BitsAllocated);
+        int bitsStored =
+            ds.GetSingleValue<int>(DicomTag.BitsStored);
+        int highBit =
+            ds.GetSingleValue<int>(DicomTag.HighBit);
+        int representation =
+            ds.GetSingleValue<int>(DicomTag.PixelRepresentation);
+        int samplesPerPixel =
+            ds.GetSingleValue<int>(DicomTag.SamplesPerPixel);
+
+        if (samplesPerPixel != 1 || representation != 0 ||
+            (bitsAllocated != 16 && bitsAllocated != 32) ||
+            bitsStored != bitsAllocated ||
+            highBit != bitsAllocated - 1)
+        {
+            throw new NotSupportedException(
+                "BioRT supports only single-channel, unsigned, " +
+                "full-width 16-bit or 32-bit RTDOSE pixel samples. " +
+                $"BitsAllocated={bitsAllocated}, BitsStored={bitsStored}, " +
+                $"HighBit={highBit}, PixelRepresentation={representation}, " +
+                $"SamplesPerPixel={samplesPerPixel}.");
+        }
+
+        if (!double.IsFinite(scaling) || scaling <= 0)
+        {
+            throw new InvalidOperationException(
+                "RTDOSE DoseGridScaling must be finite and positive.");
+        }
+
+        int bytesPerSample = bitsAllocated / 8;
+        long expectedFrameBytes =
+            (long)rows * cols * bytesPerSample;
+
+        if (expectedFrameBytes > int.MaxValue)
+        {
+            throw new NotSupportedException(
+                "RTDOSE frame exceeds maximum supported pixel byte length.");
+        }
+
         DicomPixelData pixelData = DicomPixelData.Create(ds);
         var dose = new double[cols, rows, frames];
 
         for (int k = 0; k < frames; k++)
         {
             byte[] bytes = pixelData.GetFrame(k).Data;
+
+            if (bytes.LongLength != expectedFrameBytes)
+            {
+                throw new InvalidOperationException(
+                    $"RTDOSE frame {k} contains {bytes.LongLength} bytes; " +
+                    $"expected {expectedFrameBytes} for " +
+                    $"{cols}x{rows} pixels at {bitsAllocated} bits. " +
+                    "Compressed or malformed pixel data cannot be " +
+                    "decoded as ordinary little-endian samples.");
+            }
+
             int index = 0;
 
             for (int y = 0; y < rows; y++)
             {
                 for (int x = 0; x < cols; x++)
                 {
-                    ushort raw = BitConverter.ToUInt16(bytes, index);
-                    index += sizeof(ushort);
+                    uint raw =
+                        bitsAllocated == 16
+                            ? BinaryPrimitives.ReadUInt16LittleEndian(
+                                bytes.AsSpan(index, sizeof(ushort)))
+                            : BinaryPrimitives.ReadUInt32LittleEndian(
+                                bytes.AsSpan(index, sizeof(uint)));
+
+                    index += bytesPerSample;
                     dose[x, y, k] = raw * scaling;
                 }
             }
